@@ -117,13 +117,22 @@
 <script>
     // Substitua pelo link 'Publicar na Web' -> 'Valores separados por vírgula (.csv)' da sua planilha
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1151743352&single=true&output=csv'; 
-    
     let db = { meses: [], dados: {} };
     let myChart = null;
 
+    // Função de tratamento numérico rigoroso
     function parseVal(v) {
-        if (!v || v.includes("NÃO") || v === "0" || v === "") return 0;
-        return parseFloat(v.replace(/\./g, '').replace(',', '.'));
+        if (!v) return 0;
+        // Remove espaços em branco e garante que é string
+        let text = v.toString().trim();
+        if (text === "" || text === "0") return 0;
+        
+        // Remove pontos de milhar e troca vírgula por ponto
+        // Ex: "45.457,66" vira "45457.66"
+        let clean = text.replace(/\./g, '').replace(',', '.');
+        let num = parseFloat(clean);
+        
+        return isNaN(num) ? 0 : num;
     }
 
     async function loadData() {
@@ -132,13 +141,24 @@
             const csvText = await response.text();
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
-            // Ignora cabeçalhos e processa meses (Janeiro a Dezembro)
+            db.meses = [];
+            db.dados = {};
+
+            // O processamento começa na linha onde está "JANEIRO" (índice 2)
             for (let i = 2; i < lines.length; i++) {
-                const c = lines[i].split(',');
-                if(!c[0]) continue;
-                const mes = c[0].toUpperCase();
+                // Separa por vírgula, tratando possíveis aspas do Google Sheets
+                const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/"/g, ''));
+                
+                if(!c[0] || c[0].trim() === "" || c[0].includes("ANO")) continue;
+                
+                const mes = c[0].trim().toUpperCase();
                 db.meses.push(mes);
                 
+                // Mapeamento baseado rigorosamente na ordem da sua planilha:
+                // BAST ÁGUA: R$ (Col 1, 2) | M³ (Col 3, 4)
+                // BAST ENERGIA: R$ (Col 5, 6) | KWH (Col 7, 8)
+                // CASS ÁGUA: R$ (Col 9, 10) | M³ (Col 11, 12)
+                // CASS ENERGIA: R$ (Col 13, 14) | KWH (Col 15, 16)
                 db.dados[mes] = {
                     bast_agua: { r25: parseVal(c[1]), r26: parseVal(c[2]), u25: parseVal(c[3]), u26: parseVal(c[4]), label: 'M³' },
                     bast_energia: { r25: parseVal(c[5]), r26: parseVal(c[6]), u25: parseVal(c[7]), u26: parseVal(c[8]), label: 'KWH' },
@@ -153,15 +173,20 @@
             updateUI();
             document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro ao conectar com a planilha.";
+            console.error(e);
+            document.getElementById('status').innerText = "Erro ao ler a planilha.";
         }
     }
 
+    // Calcula a média considerando apenas meses que já possuem valor (evita meses futuros zerados)
     function getAverage(contaId, yearKey) {
         let total = 0, count = 0;
         db.meses.forEach(m => {
             let val = db.dados[m][contaId][yearKey];
-            if (val > 0) { total += val; count++; }
+            if (val > 0) { 
+                total += val; 
+                count++; 
+            }
         });
         return count > 0 ? total / count : 0;
     }
@@ -169,19 +194,20 @@
     function updateUI() {
         const mes = document.getElementById('mesSelect').value;
         const conta = document.getElementById('contaSelect').value;
+        if (!db.dados[mes]) return;
+
         const info = db.dados[mes][conta];
-        
         const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         
         document.getElementById('nomeConta').innerText = document.querySelector(`#contaSelect option[value="${conta}"]`).text;
         
-        // Dados Mensais
+        // Atualiza Cards com valores exatos 
         document.getElementById('v2025').innerText = f(info.r25);
-        document.getElementById('u2025').innerText = `${info.u25} ${info.label}`;
+        document.getElementById('u2025').innerText = `${info.u25.toLocaleString('pt-BR')} ${info.label}`;
         document.getElementById('v2026').innerText = f(info.r26);
-        document.getElementById('u2026').innerText = `${info.u26} ${info.label}`;
+        document.getElementById('u2026').innerText = `${info.u26.toLocaleString('pt-BR')} ${info.label}`;
 
-        // Médias Anuais
+        // Atualiza Médias
         document.getElementById('m2025').innerText = f(getAverage(conta, 'r25'));
         document.getElementById('m2026').innerText = f(getAverage(conta, 'r26'));
 
@@ -200,20 +226,22 @@
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Ano 2025 (R$)',
+                        label: '2025 (R$)',
                         data: d25,
-                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        borderColor: 'rgba(255, 255, 255, 0.4)',
                         borderDash: [5, 5],
                         backgroundColor: 'transparent',
-                        tension: 0.3
+                        tension: 0.3,
+                        pointRadius: 3
                     },
                     {
-                        label: 'Ano 2026 (R$)',
+                        label: '2026 (R$)',
                         data: d26,
                         borderColor: '#00d2ff',
                         backgroundColor: 'rgba(0, 210, 255, 0.1)',
                         fill: true,
                         tension: 0.3,
+                        pointRadius: 5,
                         pointBackgroundColor: '#00ff88'
                     }
                 ]
@@ -221,7 +249,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#ffffff' } } },
+                plugins: { legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } } },
                 scales: {
                     y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' } },
                     x: { grid: { display: false }, ticks: { color: '#8892b0' } }
@@ -233,6 +261,7 @@
     document.getElementById('mesSelect').onchange = updateUI;
     document.getElementById('contaSelect').onchange = updateUI;
     loadData();
-</script>
+ 
+ </script>
 </body>
 </html>
