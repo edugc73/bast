@@ -70,7 +70,7 @@
         }
 
         .card h3 { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; margin-bottom: 10px; }
-        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; word-break: break-all; }
+        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; }
 
         .content-area {
             background: var(--bg-card);
@@ -131,10 +131,11 @@
         </div>
     </div>
 
-    <div id="status">Sincronizando com Google Sheets...</div>
+    <div id="status">Sincronizando...</div>
 </div>
 
 <script>
+    // Link da planilha CSV do Google Sheets
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1190920077&single=true&output=csv'; 
 
     let rawData = {};
@@ -148,36 +149,62 @@
     };
     let myChart = null;
 
-    function parseNumber(val) {
-        if (!val || val === "" || val === "0" || val === "NÃO HÁ") return 0;
-        let clean = val.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
-        return parseFloat(clean) || 0;
+    // Função robusta para ler CSV (trata aspas e vírgulas internas)
+    function parseCSV(text) {
+        const rows = [];
+        let currentRow = [];
+        let currentField = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                currentRow.push(currentField.trim());
+                currentField = '';
+            } else if ((char === '\r' || char === '\n') && !inQuotes) {
+                if (currentField !== '' || currentRow.length > 0) {
+                    currentRow.push(currentField.trim());
+                    rows.push(currentRow);
+                    currentRow = [];
+                    currentField = '';
+                }
+            } else {
+                currentField += char;
+            }
+        }
+        return rows;
+    }
+
+    function formatValue(val) {
+        if (!val || val === "NÃO HÁ" || val === "0") return 0;
+        return parseFloat(val.replace(',', '.')) || 0;
     }
 
     async function loadData() {
         try {
             const response = await fetch(SHEET_URL);
             const csvText = await response.text();
-            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
+            const dataRows = parseCSV(csvText);
             
             const months = [];
 
-            // A planilha começa na linha 0 (MESES), 1 (EXPLOSIVOS...), 2 (SALDO ANTERIOR...)
-            // JANEIRO está na linha 3 (índice 3).
-            for(let i = 3; i < lines.length; i++) {
-                const cols = lines[i].split(',').map(c => c.trim());
+            // A planilha começa com JANEIRO na linha de índice 3
+            for (let i = 3; i < dataRows.length; i++) {
+                const cols = dataRows[i];
                 if (!cols[0]) continue;
 
                 const mes = cols[0].toUpperCase();
                 months.push(mes);
                 
                 rawData[mes] = {
-                    "05": { ant: parseNumber(cols[1]), aq: parseNumber(cols[2]), con: parseNumber(cols[3]), atu: parseNumber(cols[4]) },
-                    "27": { ant: parseNumber(cols[5]), aq: parseNumber(cols[6]), con: parseNumber(cols[7]), atu: parseNumber(cols[8]) },
-                    "28": { ant: parseNumber(cols[9]), aq: parseNumber(cols[10]), con: parseNumber(cols[11]), atu: parseNumber(cols[12]) },
-                    "37": { ant: parseNumber(cols[13]), aq: parseNumber(cols[14]), con: parseNumber(cols[15]), atu: parseNumber(cols[16]) },
-                    "RIMB": { numero: cols[17], item: cols[18], consumo: cols[19] },
-                    "GMM": { remetente: cols[20], consig: cols[21], numero: cols[22], material: cols[23] }
+                    "05": { ant: formatValue(cols[1]), aq: formatValue(cols[2]), con: formatValue(cols[3]), atu: formatValue(cols[4]) },
+                    "27": { ant: formatValue(cols[5]), aq: formatValue(cols[6]), con: formatValue(cols[7]), atu: formatValue(cols[8]) },
+                    "28": { ant: formatValue(cols[9]), aq: formatValue(cols[10]), con: formatValue(cols[11]), atu: formatValue(cols[12]) },
+                    "37": { ant: formatValue(cols[13]), aq: formatValue(cols[14]), con: formatValue(cols[15]), atu: formatValue(cols[16]) },
+                    "RIMB": { numero: cols[17] || "---", item: cols[18] || "---", consumo: cols[19] || "---" },
+                    "GMM": { remetente: cols[20] || "---", consignatario: cols[21] || "---", numero: cols[22] || "---", material: cols[23] || "---" }
                 };
             }
 
@@ -185,9 +212,9 @@
             selMes.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
             
             updateUI();
-            document.getElementById('status').innerText = "● Sincronizado";
+            document.getElementById('status').innerText = "● Dados Atualizados";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro na sincronização.";
+            document.getElementById('status').innerText = "Erro ao conectar.";
         }
     }
 
@@ -210,7 +237,7 @@
                 <tr><td class="label">CONSUMO</td><td>${data.consumo}</td></tr>` 
                 : `
                 <tr><td class="label">REMETENTE</td><td>${data.remetente}</td></tr>
-                <tr><td class="label">CONSIGNATÁRIO</td><td>${data.consig}</td></tr>
+                <tr><td class="label">CONSIGNATÁRIO</td><td>${data.consignatario}</td></tr>
                 <tr><td class="label">NÚMERO</td><td>${data.numero}</td></tr>
                 <tr><td class="label">MATERIAL</td><td>${data.material}</td></tr>`;
             
