@@ -114,13 +114,16 @@
 
 <script>
     // Link da sua planilha CSV (certifique-se de manter como CSV no Google Sheets)
-    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1190920077&single=true&output=csv'; 
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1245746114&single=true&output=csv'; 
 
     let rawData = {};
     let contaNomes = {
-        "05": "EXPLOSIVOS E MUNIÇÕES", "27": "MATERIAL DE MANOBRA E PATRULHAMENTO",
-        "28": "MATERIAL DE PROTEÇÃO E SEGURANÇA", "37": "SOBRESSALENTES DE ARMAMENTO",
-        "RIMB": "REQUISIÇÃO INTERNA DE MATERIAL BÉLICO", "GMM": "GUIA DE MOVIMENTAÇÃO DE MATERIAL"
+        "05": "EXPLOSIVOS E MUNIÇÕES",
+        "27": "MATERIAL DE MANOBRA E PATRULHAMENTO",
+        "28": "MATERIAL DE PROTEÇÃO E SEGURANÇA",
+        "37": "SOBRESSALENTES DE ARMAMENTO",
+        "RIMB": "REQUISIÇÃO INTERNA DE MATERIAL BÉLICO",
+        "GMM": "GUIA DE MOVIMENTAÇÃO DE MATERIAL"
     };
     let myChart = null;
 
@@ -141,7 +144,7 @@
             const months = [];
 
             // Começamos na linha de Janeiro (Linha 4 no Excel = Índice 3)
-            for (let i = 3; i < lines.length; i++) {
+            for (let i = 2; i < lines.length; i++) {
                 const cols = lines[i].split(',');
                 
                 // Devido à vírgula decimal na sua planilha (ex: 66574,49), 
@@ -150,20 +153,20 @@
                 months.push(mes);
                 
                 rawData[mes] = {
-                    "05": { ant: cleanVal(cols[1]), aq: cleanVal(cols[2]), con: cleanVal(cols[3]), atu: cleanVal(cols[4]) },
-                    "27": { ant: cleanVal(cols[5]), aq: cleanVal(cols[6]), con: cleanVal(cols[7]), atu: cleanVal(cols[8]) },
-                    "28": { ant: cleanVal(cols[9]), aq: cleanVal(cols[10]), con: cleanVal(cols[11]), atu: cleanVal(cols[12]) },
-                    "37": { ant: cleanVal(cols[13]), aq: cleanVal(cols[14]), con: cleanVal(cols[15]), atu: cleanVal(cols[16]) },
+                    "05": { ant: cleanVal(cols[2]), aq: cleanVal(cols[3]), con: cleanVal(cols[4]), atu: cleanVal(cols[5]) },
+                    "27": { ant: cleanVal(cols[6]), aq: cleanVal(cols[7]), con: cleanVal(cols[8]), atu: cleanVal(cols[9]) },
+                    "28": { ant: cleanVal(cols[10]), aq: cleanVal(cols[11]), con: cleanVal(cols[12]), atu: cleanVal(cols[13]) },
+                    "37": { ant: cleanVal(cols[14]), aq: cleanVal(cols[15]), con: cleanVal(cols[16]), atu: cleanVal(cols[17]) },
                     "RIMB": { 
-                        numero: cols[17] || "NÃO HÁ", 
-                        item: cols[18] || "NÃO HÁ", 
-                        consumo: cols[19] || "NÃO HÁ" 
+                        numero: cols[18] || "NÃO HÁ", 
+                        item: cols[19] || "NÃO HÁ", 
+                        consumo: cols[20] || "NÃO HÁ" 
                     },
                     "GMM": { 
-                        remetente: cols[20] || "NÃO HÁ", 
-                        consignatario: cols[21] || "NÃO HÁ", 
-                        numero: cols[22] || "NÃO HÁ", 
-                        material: cols[23] || "NÃO HÁ" 
+                        remetente: cols[21] || "NÃO HÁ", 
+                        consignatario: cols[22] || "NÃO HÁ", 
+                        numero: cols[23] || "NÃO HÁ", 
+                        material: cols[24] || "NÃO HÁ" 
                     }
                 };
             }
