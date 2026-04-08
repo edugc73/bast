@@ -71,7 +71,7 @@
     <header>
         <div class="logo-area">
             <div class="logo">ALMOXARIFADO EIE_SSG</div>
-            <div id="nomeContaCompleto">Carregando contas...</div>
+            <div id="nomeContaCompleto">A carregar contas...</div>
         </div>
         <div class="controls">
             <select id="mesSelect"></select>
@@ -97,7 +97,7 @@
         <div class="card">
             <h3>Saldo Atual</h3>
             <p id="valSaldo" style="color: var(--pos)">R$ 0,00</p>
-            <span class="label-media">Em estoque</span>
+            <span class="label-media">Em stock</span>
         </div>
     </div>
 
@@ -109,7 +109,8 @@
 </div>
 
 <script>
-    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1945400508&single=true&output=csv'; 
+    // Substitui pelo teu link CSV do Almoxarifado
+    const SHEET_URL = 'TEU_LINK_CSV_AQUI'; 
     
     let db = { meses: [], dados: {}, listaContas: [] };
     let myChart = null;
@@ -128,11 +129,11 @@
             const csvText = await response.text();
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
-            // Pega a linha 2 para os nomes das contas (Combustíveis, Expediente, etc)
+            // Nomes das contas estão na Linha 2 (índice 1)
             const nomesContas = lines[1].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
             
             db.listaContas = [];
-            // Pula a primeira coluna (Meses) e percorre de 4 em 4
+            // Salta a coluna de Meses e percorre as contas (4 colunas cada)
             for (let j = 1; j < nomesContas.length; j += 4) {
                 if (nomesContas[j]) {
                     db.listaContas.push({ id: `c_${j}`, nome: nomesContas[j], colIdx: j });
@@ -145,7 +146,7 @@
             db.meses = [];
             db.dados = {};
 
-            // Inicia na linha 4 (índice 3) onde começam os meses
+            // Os dados começam na Linha 4 (índice 3)
             for (let i = 3; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
                 if(!c[0] || c[0] === "" || c[0].includes("MESES")) continue;
@@ -215,14 +216,14 @@
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'Aquisição', data: dAquisicao, backgroundColor: '#00d2ff' },
-                    { label: 'Consumo', data: dConsumo, backgroundColor: '#ff4d4d' }
+                    { label: 'Aquisição', data: dAquisicao, backgroundColor: '#00d2ff', borderRadius: 4 },
+                    { label: 'Consumo', data: dConsumo, backgroundColor: '#ff4d4d', borderRadius: 4 }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#ffffff' } } },
+                plugins: { legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } } },
                 scales: {
                     y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' } },
                     x: { grid: { display: false }, ticks: { color: '#8892b0' } }
