@@ -70,7 +70,7 @@
         }
 
         .card h3 { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; margin-bottom: 10px; }
-        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; word-break: break-word; }
+        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; word-break: break-all; }
 
         .content-area {
             background: var(--bg-card);
@@ -135,7 +135,6 @@
 </div>
 
 <script>
-    // Link da planilha fornecida
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1190920077&single=true&output=csv'; 
 
     let rawData = {};
@@ -149,22 +148,9 @@
     };
     let myChart = null;
 
-    function splitCSV(row) {
-        // Função para tratar vírgulas dentro de aspas e espaços
-        const matches = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-        if (!matches) return [];
-        return matches.map(val => val.replace(/^"|"$/g, '').trim());
-    }
-
     function parseNumber(val) {
         if (!val || val === "" || val === "0" || val === "NÃO HÁ") return 0;
-        let clean = val.replace(/[R$\s]/g, '');
-        // Trata separador de milhar e decimal
-        if (clean.includes(',') && clean.includes('.')) {
-            clean = clean.replace(/\./g, '').replace(',', '.');
-        } else {
-            clean = clean.replace(',', '.');
-        }
+        let clean = val.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
         return parseFloat(clean) || 0;
     }
 
@@ -175,32 +161,33 @@
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
             const months = [];
-            // Alterado para i >= 3 para garantir que Janeiro (linha 4) seja incluído
-            lines.forEach((line, i) => {
-                const cols = splitCSV(line);
-                if (i >= 3 && cols[0]) {
-                    const mes = cols[0].toUpperCase();
-                    if (!months.includes(mes)) months.push(mes);
-                    
-                    rawData[mes] = {
-                        "05": { ant: parseNumber(cols[1]), aq: parseNumber(cols[2]), con: parseNumber(cols[3]), atu: parseNumber(cols[4]) },
-                        "27": { ant: parseNumber(cols[5]), aq: parseNumber(cols[6]), con: parseNumber(cols[7]), atu: parseNumber(cols[8]) },
-                        "28": { ant: parseNumber(cols[9]), aq: parseNumber(cols[10]), con: parseNumber(cols[11]), atu: parseNumber(cols[12]) },
-                        "37": { ant: parseNumber(cols[13]), aq: parseNumber(cols[14]), con: parseNumber(cols[15]), atu: parseNumber(cols[16]) },
-                        "RIMB": { numero: cols[18], item: cols[19], consumo: cols[20] },
-                        "GMM": { remetente: cols[21], consig: cols[22], numero: cols[23], material: cols[24] }
-                    };
-                }
-            });
+
+            // A planilha começa na linha 0 (MESES), 1 (EXPLOSIVOS...), 2 (SALDO ANTERIOR...)
+            // JANEIRO está na linha 3 (índice 3).
+            for(let i = 3; i < lines.length; i++) {
+                const cols = lines[i].split(',').map(c => c.trim());
+                if (!cols[0]) continue;
+
+                const mes = cols[0].toUpperCase();
+                months.push(mes);
+                
+                rawData[mes] = {
+                    "05": { ant: parseNumber(cols[1]), aq: parseNumber(cols[2]), con: parseNumber(cols[3]), atu: parseNumber(cols[4]) },
+                    "27": { ant: parseNumber(cols[5]), aq: parseNumber(cols[6]), con: parseNumber(cols[7]), atu: parseNumber(cols[8]) },
+                    "28": { ant: parseNumber(cols[9]), aq: parseNumber(cols[10]), con: parseNumber(cols[11]), atu: parseNumber(cols[12]) },
+                    "37": { ant: parseNumber(cols[13]), aq: parseNumber(cols[14]), con: parseNumber(cols[15]), atu: parseNumber(cols[16]) },
+                    "RIMB": { numero: cols[17], item: cols[18], consumo: cols[19] },
+                    "GMM": { remetente: cols[20], consig: cols[21], numero: cols[22], material: cols[23] }
+                };
+            }
 
             const selMes = document.getElementById('mesSelect');
             selMes.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
             
             updateUI();
-            document.getElementById('status').innerText = "● Dados Sincronizados";
+            document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
-            console.error(e);
-            document.getElementById('status').innerText = "Erro ao carregar dados.";
+            document.getElementById('status').innerText = "Erro na sincronização.";
         }
     }
 
@@ -217,19 +204,16 @@
             document.getElementById('mainChart').style.display = 'none';
             document.getElementById('docTableArea').style.display = 'block';
             
-            let html = "";
-            if (conta === "RIMB") {
-                html = `
-                    <tr><td class="label">NÚMERO</td><td>${data.numero}</td></tr>
-                    <tr><td class="label">ITEM</td><td>${data.item}</td></tr>
-                    <tr><td class="label">CONSUMO</td><td>${data.consumo}</td></tr>`;
-            } else {
-                html = `
-                    <tr><td class="label">REMETENTE</td><td>${data.remetente}</td></tr>
-                    <tr><td class="label">CONSIGNATÁRIO</td><td>${data.consig}</td></tr>
-                    <tr><td class="label">NÚMERO</td><td>${data.numero}</td></tr>
-                    <tr><td class="label">MATERIAL</td><td>${data.material}</td></tr>`;
-            }
+            let html = (conta === "RIMB") ? `
+                <tr><td class="label">NÚMERO</td><td>${data.numero}</td></tr>
+                <tr><td class="label">ITEM</td><td>${data.item}</td></tr>
+                <tr><td class="label">CONSUMO</td><td>${data.consumo}</td></tr>` 
+                : `
+                <tr><td class="label">REMETENTE</td><td>${data.remetente}</td></tr>
+                <tr><td class="label">CONSIGNATÁRIO</td><td>${data.consig}</td></tr>
+                <tr><td class="label">NÚMERO</td><td>${data.numero}</td></tr>
+                <tr><td class="label">MATERIAL</td><td>${data.material}</td></tr>`;
+            
             document.getElementById('tableContent').innerHTML = html;
         } else {
             document.getElementById('financeCards').style.display = 'grid';
