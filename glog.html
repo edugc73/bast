@@ -135,6 +135,7 @@
 </div>
 
 <script>
+    // Link da planilha fornecida
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1190920077&single=true&output=csv'; 
 
     let rawData = {};
@@ -149,6 +150,7 @@
     let myChart = null;
 
     function splitCSV(row) {
+        // Função para tratar vírgulas dentro de aspas e espaços
         const matches = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
         if (!matches) return [];
         return matches.map(val => val.replace(/^"|"$/g, '').trim());
@@ -157,6 +159,7 @@
     function parseNumber(val) {
         if (!val || val === "" || val === "0" || val === "NÃO HÁ") return 0;
         let clean = val.replace(/[R$\s]/g, '');
+        // Trata separador de milhar e decimal
         if (clean.includes(',') && clean.includes('.')) {
             clean = clean.replace(/\./g, '').replace(',', '.');
         } else {
@@ -172,6 +175,7 @@
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
             const months = [];
+            // Alterado para i >= 3 para garantir que Janeiro (linha 4) seja incluído
             lines.forEach((line, i) => {
                 const cols = splitCSV(line);
                 if (i >= 3 && cols[0]) {
@@ -184,7 +188,7 @@
                         "28": { ant: parseNumber(cols[9]), aq: parseNumber(cols[10]), con: parseNumber(cols[11]), atu: parseNumber(cols[12]) },
                         "37": { ant: parseNumber(cols[13]), aq: parseNumber(cols[14]), con: parseNumber(cols[15]), atu: parseNumber(cols[16]) },
                         "RIMB": { numero: cols[17], item: cols[18], consumo: cols[19] },
-                        "GMM": { remetente: cols[20], consignatario: cols[21], numero: cols[22], material: cols[23] }
+                        "GMM": { remetente: cols[20], consig: cols[21], numero: cols[22], material: cols[23] }
                     };
                 }
             });
@@ -195,6 +199,7 @@
             updateUI();
             document.getElementById('status').innerText = "● Dados Sincronizados";
         } catch (e) {
+            console.error(e);
             document.getElementById('status').innerText = "Erro ao carregar dados.";
         }
     }
@@ -202,12 +207,12 @@
     function updateUI() {
         const mes = document.getElementById('mesSelect').value;
         const conta = document.getElementById('contaSelect').value;
-        const data = rawData[mes][conta];
+        if (!rawData[mes]) return;
         
+        const data = rawData[mes][conta];
         document.getElementById('nomeConta').innerText = contaNomes[conta];
 
         if (conta === "RIMB" || conta === "GMM") {
-            // Modo Tabela (Documentos)
             document.getElementById('financeCards').style.display = 'none';
             document.getElementById('mainChart').style.display = 'none';
             document.getElementById('docTableArea').style.display = 'block';
@@ -221,13 +226,12 @@
             } else {
                 html = `
                     <tr><td class="label">REMETENTE</td><td>${data.remetente}</td></tr>
-                    <tr><td class="label">CONSIGNATÁRIO</td><td>${data.consignatario}</td></tr>
+                    <tr><td class="label">CONSIGNATÁRIO</td><td>${data.consig}</td></tr>
                     <tr><td class="label">NÚMERO</td><td>${data.numero}</td></tr>
                     <tr><td class="label">MATERIAL</td><td>${data.material}</td></tr>`;
             }
             document.getElementById('tableContent').innerHTML = html;
         } else {
-            // Modo Gráfico (Contas Financeiras)
             document.getElementById('financeCards').style.display = 'grid';
             document.getElementById('mainChart').style.display = 'block';
             document.getElementById('docTableArea').style.display = 'none';
