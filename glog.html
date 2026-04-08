@@ -53,7 +53,7 @@
         }
 
         .card h3 { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; margin-bottom: 10px; }
-        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; }
+        .card p { font-size: 1.3rem; font-weight: 600; margin: 0; }
 
         .content-area {
             background: var(--bg-card); padding: 25px; border-radius: 20px;
@@ -76,7 +76,7 @@
     <header>
         <div class="logo-area">
             <div class="logo">PRESTAÇÃO DE CONTAS GLOG 2026</div>
-            <div id="nomeConta">Carregando conta...</div>
+            <div id="nomeConta">Carregando...</div>
         </div>
         <div class="controls">
             <select id="mesSelect"></select>
@@ -109,50 +109,61 @@
         </div>
     </div>
 
-    <div id="status">Sincronizando...</div>
+    <div id="status">Sincronizando dados...</div>
 </div>
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1190920077&single=true&output=csv'; 
 
     let rawData = {};
-    let contaNomes = {
+    const contaNomes = {
         "05": "EXPLOSIVOS E MUNIÇÕES", "27": "MATERIAL DE MANOBRA E PATRULHAMENTO",
         "28": "MATERIAL DE PROTEÇÃO E SEGURANÇA", "37": "SOBRESSALENTES DE ARMAMENTO",
         "RIMB": "REQUISIÇÃO INTERNA DE MATERIAL BÉLICO", "GMM": "GUIA DE MOVIMENTAÇÃO DE MATERIAL"
     };
     let myChart = null;
 
-    // LIMPEZA DE NÚMEROS BRASILEIROS: Remove pontos de milhar e troca vírgula por ponto
-    function parseNumBR(val) {
-        if (!val || val.trim() === "" || val.includes("NÃO")) return 0;
-        let clean = val.replace(/\./g, '').replace(',', '.');
-        return parseFloat(clean) || 0;
+    // Função para tratar o CSV respeitando aspas (que protegem as vírgulas decimais)
+    function splitCSV(text) {
+        const result = [];
+        let cur = '', inQuotes = false;
+        for (let char of text) {
+            if (char === '"') inQuotes = !inQuotes;
+            else if (char === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+            else cur += char;
+        }
+        result.push(cur.trim());
+        return result;
+    }
+
+    function parseFinance(val) {
+        if (!val || val === "" || val === "0" || val.includes("NÃO")) return 0;
+        // Remove pontos de milhar e converte vírgula decimal em ponto
+        return parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
     }
 
     async function loadData() {
         try {
             const response = await fetch(SHEET_URL);
             const csvText = await response.text();
+            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
-            // Tratamento rigoroso de linhas e colunas
-            const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
             const months = [];
 
-            // Janeiro está na linha de índice 3
+            // Começa em i=3 (JANEIRO)
             for (let i = 3; i < lines.length; i++) {
-                const cols = lines[i].split(',').map(c => c.trim());
+                const cols = splitCSV(lines[i]);
                 if (!cols[0]) continue;
 
                 const mes = cols[0].toUpperCase();
                 months.push(mes);
                 
                 rawData[mes] = {
-                    "05": { ant: parseNumBR(cols[1]), aq: parseNumBR(cols[2]), con: parseNumBR(cols[3]), atu: parseNumBR(cols[4]) },
-                    "27": { ant: parseNumBR(cols[5]), aq: parseNumBR(cols[6]), con: parseNumBR(cols[7]), atu: parseNumBR(cols[8]) },
-                    "28": { ant: parseNumBR(cols[9]), aq: parseNumBR(cols[10]), con: parseNumBR(cols[11]), atu: parseNumBR(cols[12]) },
-                    "37": { ant: parseNumBR(cols[13]), aq: parseNumBR(cols[14]), con: parseNumBR(cols[15]), atu: parseNumBR(cols[16]) },
-                    "RIMB": { numero: cols[17] || "NÃO HÁ", item: cols[18] || "NÃO HÁ", consumo: cols[19] || "NÃO HÁ" },
+                    "05": { ant: parseFinance(cols[1]), aq: parseFinance(cols[2]), con: parseFinance(cols[3]), atu: parseFinance(cols[4]) },
+                    "27": { ant: parseFinance(cols[5]), aq: parseFinance(cols[6]), con: parseFinance(cols[7]), atu: parseFinance(cols[8]) },
+                    "28": { ant: parseFinance(cols[9]), aq: parseFinance(cols[10]), con: parseFinance(cols[11]), atu: parseFinance(cols[12]) },
+                    "37": { ant: parseFinance(cols[13]), aq: parseFinance(cols[14]), con: parseFinance(cols[15]), atu: parseFinance(cols[16]) },
+                    "RIMB": { numero: cols[17] || "NÃO HÁ", item: cols[18] || "NÃO HÁ", consumo: cols[19] || "0,00" },
                     "GMM": { remetente: cols[20] || "NÃO HÁ", consig: cols[21] || "NÃO HÁ", numero: cols[22] || "NÃO HÁ", material: cols[23] || "NÃO HÁ" }
                 };
             }
@@ -160,13 +171,13 @@
             const selMes = document.getElementById('mesSelect');
             selMes.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
             
-            // GARANTE QUE JANEIRO SEJA O PRIMEIRO SELECIONADO NO CARREGAMENTO
+            // Força JANEIRO no início
             selMes.value = "JANEIRO";
-            
             updateUI();
+            
             document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro ao ler planilha.";
+            document.getElementById('status').innerText = "Erro de conexão.";
         }
     }
 
@@ -175,7 +186,7 @@
         const conta = document.getElementById('contaSelect').value;
         if (!rawData[mes]) return;
         
-        const data = rawData[mes][conta];
+        const d = rawData[mes][conta];
         document.getElementById('nomeConta').innerText = contaNomes[conta];
 
         if (conta === "RIMB" || conta === "GMM") {
@@ -183,27 +194,24 @@
             document.getElementById('mainChart').style.display = 'none';
             document.getElementById('docTableArea').style.display = 'block';
             
-            let html = (conta === "RIMB") ? `
-                <tr><td class="label">NÚMERO</td><td>${data.numero}</td></tr>
-                <tr><td class="label">ITEM</td><td>${data.item}</td></tr>
-                <tr><td class="label">CONSUMO</td><td>${data.consumo}</td></tr>` 
-                : `
-                <tr><td class="label">REMETENTE</td><td>${data.remetente}</td></tr>
-                <tr><td class="label">CONSIGNATÁRIO</td><td>${data.consig}</td></tr>
-                <tr><td class="label">NÚMERO</td><td>${data.numero}</td></tr>
-                <tr><td class="label">MATERIAL</td><td>${data.material}</td></tr>`;
-            
-            document.getElementById('tableContent').innerHTML = html;
+            document.getElementById('tableContent').innerHTML = (conta === "RIMB") ? `
+                <tr><td class="label">NÚMERO</td><td>${d.numero}</td></tr>
+                <tr><td class="label">ITEM</td><td>${d.item}</td></tr>
+                <tr><td class="label">CONSUMO</td><td>${d.consumo}</td></tr>` : `
+                <tr><td class="label">REMETENTE</td><td>${d.remetente}</td></tr>
+                <tr><td class="label">CONSIGNATÁRIO</td><td>${d.consig}</td></tr>
+                <tr><td class="label">NÚMERO</td><td>${d.numero}</td></tr>
+                <tr><td class="label">MATERIAL</td><td>${d.material}</td></tr>`;
         } else {
             document.getElementById('financeCards').style.display = 'grid';
             document.getElementById('mainChart').style.display = 'block';
             document.getElementById('docTableArea').style.display = 'none';
 
             const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            document.getElementById('txtAnt').innerText = f(data.ant);
-            document.getElementById('txtAq').innerText = f(data.aq);
-            document.getElementById('txtCon').innerText = f(data.con);
-            document.getElementById('txtAtu').innerText = f(data.atu);
+            document.getElementById('txtAnt').innerText = f(d.ant);
+            document.getElementById('txtAq').innerText = f(d.aq);
+            document.getElementById('txtCon').innerText = f(d.con);
+            document.getElementById('txtAtu').innerText = f(d.atu);
 
             updateChart(conta);
         }
@@ -213,8 +221,7 @@
         const labels = Object.keys(rawData);
         const values = labels.map(m => rawData[m][contaId].atu);
         if (myChart) myChart.destroy();
-        const ctx = document.getElementById('mainChart').getContext('2d');
-        myChart = new Chart(ctx, {
+        myChart = new Chart(document.getElementById('mainChart').getContext('2d'), {
             type: 'line',
             data: {
                 labels: labels,
