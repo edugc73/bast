@@ -1,0 +1,83 @@
+<div class="container">
+    <header>
+        <div class="logo-area">
+            <div class="logo">PRESTAÇÃO DE CONTAS EI_SREG</div>
+            <div id="nomeConta">Carregando...</div>
+        </div>
+        <div class="controls">
+            <select id="mesSelect"></select>
+            <select id="contaSelect">
+                <option value="sreg_agua">SREG - ÁGUA E ESGOTO</option>
+                <option value="sreg_energia">SREG - ENERGIA ELÉTRICA</option>
+            </select>
+        </div>
+    </header>
+
+    <div class="content-area">
+        <canvas id="mainChart"></canvas>
+    </div>
+
+    <div id="status">Sincronizando com Google Sheets...</div>
+</div>
+
+<script>
+    // Substitua pelo novo link CSV do Google Sheets do arquivo EI_SREG
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1358588515&single=true&output=csv'; 
+    let db = { meses: [], dados: {} };
+    let myChart = null;
+
+    function parseVal(v) {
+        if (!v) return 0;
+        let text = v.toString().trim();
+        if (text === "" || text === "0") return 0;
+        let clean = text.replace(/\./g, '').replace(',', '.');
+        let num = parseFloat(clean);
+        return isNaN(num) ? 0 : num;
+    }
+
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL);
+            const csvText = await response.text();
+            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
+            
+            db.meses = [];
+            db.dados = {};
+
+            // Inicia o processamento (ajustado para a estrutura do EI_SREG)
+            for (let i = 2; i < lines.length; i++) {
+                const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/"/g, ''));
+                
+                if(!c[0] || c[0].trim() === "" || c[0].includes("ANO")) continue;
+                
+                const mes = c[0].trim().toUpperCase();
+                db.meses.push(mes);
+                
+                // Mapeamento baseado no arquivo EI_SREG:
+                // SREG ÁGUA: R$ (Col 1, 2) | M³ (Col 3, 4)
+                // SREG ENERGIA: R$ (Col 5, 6) | KWH (Col 7, 8)
+                db.dados[mes] = {
+                    sreg_agua: { 
+                        r25: parseVal(c[1]), r26: parseVal(c[2]), 
+                        u25: parseVal(c[3]), u26: parseVal(c[4]), label: 'M³' 
+                    },
+                    sreg_energia: { 
+                        r25: parseVal(c[5]), r26: parseVal(c[6]), 
+                        u25: parseVal(c[7]), u26: parseVal(c[8]), label: 'KWH' 
+                    }
+                };
+            }
+
+            const selMes = document.getElementById('mesSelect');
+            selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+            updateUI();
+            document.getElementById('status').innerText = "● Sincronizado";
+        } catch (e) {
+            console.error(e);
+            document.getElementById('status').innerText = "Erro ao ler a planilha.";
+        }
+    }
+
+    // ... (Mantenha as funções getAverage, updateUI e updateChart de barras que fizemos antes) ...
+</script>
