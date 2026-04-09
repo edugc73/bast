@@ -214,45 +214,56 @@
         updateChart(conta);
     }
 
-    function updateChart(contaId) {
+   function updateChart(contaId) {
         const labels = db.meses;
         const d25 = labels.map(m => db.dados[m][contaId].r25);
         const d26 = labels.map(m => db.dados[m][contaId].r26);
 
         if (myChart) myChart.destroy();
         myChart = new Chart(document.getElementById('mainChart').getContext('2d'), {
-            type: 'line',
+            type: 'bar', // Alterado de 'line' para 'bar'
             data: {
                 labels: labels,
                 datasets: [
                     {
                         label: '2025 (R$)',
                         data: d25,
-                        borderColor: 'rgba(255, 255, 255, 0.4)',
-                        borderDash: [5, 5],
-                        backgroundColor: 'transparent',
-                        tension: 0.3,
-                        pointRadius: 3
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)', // Barra mais discreta para o ano anterior
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        borderWidth: 1,
+                        borderRadius: 5 // Bordas arredondadas nas barras
                     },
                     {
                         label: '2026 (R$)',
                         data: d26,
+                        backgroundColor: 'rgba(0, 210, 255, 0.7)', // Cor principal com destaque
                         borderColor: '#00d2ff',
-                        backgroundColor: 'rgba(0, 210, 255, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#00ff88'
+                        borderWidth: 1,
+                        borderRadius: 5
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } } },
+                plugins: { 
+                    legend: { 
+                        labels: { 
+                            color: '#ffffff', 
+                            font: { family: 'Poppins' } 
+                        } 
+                    } 
+                },
                 scales: {
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' } },
-                    x: { grid: { display: false }, ticks: { color: '#8892b0' } }
+                    y: { 
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        ticks: { color: '#8892b0' },
+                        beginAtZero: true // Garante que o gráfico comece do zero
+                    },
+                    x: { 
+                        grid: { display: false }, 
+                        ticks: { color: '#8892b0' } 
+                    }
                 }
             }
         });
