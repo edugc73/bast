@@ -40,20 +40,18 @@
         }
 
         .grid-cards {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 20px; margin-bottom: 25px;
         }
 
         .card {
             background: var(--bg-card); padding: 20px; border-radius: 20px;
             border: 1px solid var(--white-alpha); text-align: center;
-            transition: transform 0.3s;
         }
 
-        .card:hover { transform: translateY(-5px); }
         .card h3 { font-size: 0.65rem; color: #8892b0; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
         .card p { font-size: 1.4rem; font-weight: 600; margin: 0; }
-        .avg-label { color: #00ff88; font-size: 0.8rem !important; }
+        .avg-val { color: #00ff88; } /* Cor para destacar as médias */
 
         .content-area {
             background: var(--bg-card); padding: 25px; border-radius: 20px;
@@ -88,16 +86,16 @@
             <p id="txt2025">0.00</p>
         </div>
         <div class="card">
+            <h3>Média Anual 2025</h3>
+            <p id="avg2025" class="avg-val">0.00</p>
+        </div>
+        <div class="card">
             <h3>Consumo 2026 (Mês)</h3>
             <p id="txt2026" style="color: var(--accent)">0.00</p>
         </div>
-        <div class="card" style="border-color: rgba(255,255,255,0.2)">
-            <h3>Média Anual 2025</h3>
-            <p id="avg2025" class="avg-label">0.00</p>
-        </div>
-        <div class="card" style="border-color: rgba(0, 210, 255, 0.3)">
+        <div class="card">
             <h3>Média Anual 2026</h3>
-            <p id="avg2026" class="avg-label" style="color: var(--accent)">0.00</p>
+            <p id="avg2026" class="avg-val" style="color: var(--accent)">0.00</p>
         </div>
     </div>
 
@@ -105,7 +103,7 @@
         <canvas id="mainChart"></canvas>
     </div>
 
-    <div id="status">Sincronizando...</div>
+    <div id="status">Sincronizando com Google Sheets...</div>
 </div>
 
 <script>
@@ -155,18 +153,13 @@
         }
     }
 
-    // Função para calcular média ignorando valores zerados
-    function calculateYearlyAverage(contaId, yearKey) {
+    // Cálculo da média: Soma total / 12
+    function calculateFullAverage(contaId, yearKey) {
         let total = 0;
-        let count = 0;
         db.meses.forEach(mes => {
-            const val = db.dados[mes][contaId][yearKey];
-            if (val > 0) {
-                total += val;
-                count++;
-            }
+            total += db.dados[mes][contaId][yearKey];
         });
-        return count > 0 ? (total / count).toFixed(2) : "0.00";
+        return (total / 12).toFixed(2);
     }
 
     function updateUI() {
@@ -178,9 +171,9 @@
         document.getElementById('txt2025').innerText = info.v25.toFixed(2);
         document.getElementById('txt2026').innerText = info.v26.toFixed(2);
 
-        // Atualiza os novos cards de média
-        document.getElementById('avg2025').innerText = calculateYearlyAverage(conta, 'v25');
-        document.getElementById('avg2026').innerText = calculateYearlyAverage(conta, 'v26');
+        // Atualiza as médias usando a divisão por 12
+        document.getElementById('avg2025').innerText = calculateFullAverage(conta, 'v25');
+        document.getElementById('avg2026').innerText = calculateFullAverage(conta, 'v26');
 
         updateChart(conta);
     }
