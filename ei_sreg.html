@@ -11,16 +11,14 @@
             --bg-body: #050a1a;
             --bg-card: rgba(13, 27, 53, 0.95);
             --accent: #00d2ff;
-            --accent-2: #ff007a;
             --text: #ffffff;
-            --pos: #00ff88;
         }
 
         body {
             background-color: var(--bg-body);
             color: var(--text);
             font-family: 'Poppins', sans-serif;
-            margin: 0; padding: 20px; min-height: 100vh;
+            margin: 0; padding: 20px;
             background: radial-gradient(circle at top right, #0a1f44, #050a1a);
         }
 
@@ -32,13 +30,12 @@
             margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .logo-area { display: flex; flex-direction: column; }
-        .logo { font-weight: 600; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
-        #nomeConta { font-size: 0.9rem; color: #8892b0; margin-top: 5px; font-weight: 300; }
+        .logo { font-weight: 600; font-size: 1.1rem; color: var(--accent); }
+        #nomeConta { font-size: 0.9rem; color: #8892b0; margin-top: 5px; }
 
         .controls select {
             background: #152545; color: white; border: 1px solid var(--accent);
-            padding: 10px 15px; border-radius: 8px; cursor: pointer; margin-left: 10px;
+            padding: 10px; border-radius: 8px; cursor: pointer; margin-left: 10px;
         }
 
         .grid-cards {
@@ -49,21 +46,18 @@
         .card {
             background: var(--bg-card); padding: 20px; border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.05); text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
         .card h3 { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; margin-bottom: 10px; }
         .card p { font-size: 1.2rem; font-weight: 600; margin: 0; }
-        .card .unit-label { font-size: 0.65rem; color: var(--accent); opacity: 0.8; display: block; margin-top: 4px; }
 
         .content-area {
             background: var(--bg-card); padding: 25px; border-radius: 20px;
-            min-height: 400px; border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
         canvas { width: 100% !important; height: 380px !important; }
-
-        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; opacity: 0.7; }
+        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -77,8 +71,9 @@
         <div class="controls">
             <select id="mesSelect"></select>
             <select id="contaSelect">
-                <option value="sreg_agua">SREG - ÁGUA E ESGOTO</option>
-                <option value="sreg_energia">SREG - ENERGIA ELÉTRICA</option>
+                <option value="16">CONTA 16</option>
+                <option value="21">CONTA 21</option>
+                <option value="22">CONTA 22</option>
             </select>
         </div>
     </header>
@@ -87,7 +82,6 @@
         <div class="card">
             <h3>Valor 2025</h3>
             <p id="v2025">R$ 0,00</p>
-            <span id="u2025" class="unit-label">0 M³</span>
         </div>
         <div class="card">
             <h3>Média Anual 2025</h3>
@@ -96,7 +90,6 @@
         <div class="card">
             <h3>Valor 2026</h3>
             <p id="v2026" style="color: var(--accent)">R$ 0,00</p>
-            <span id="u2026" class="unit-label">0 M³</span>
         </div>
         <div class="card">
             <h3>Média Anual 2026</h3>
@@ -112,7 +105,7 @@
 </div>
 
 <script>
-    // IMPORTANTE: Substitua pela URL do seu novo Google Sheets (EI_SREG) publicado como CSV
+    // Substitua pela URL da sua planilha EI_SREG publicada como CSV
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1358588515&single=true&output=csv'; 
     
     let db = { meses: [], dados: {} };
@@ -121,7 +114,7 @@
     function parseVal(v) {
         if (!v) return 0;
         let text = v.toString().trim();
-        if (text === "" || text === "0") return 0;
+        // Remove pontos de milhar e troca vírgula por ponto
         let clean = text.replace(/\./g, '').replace(',', '.');
         let num = parseFloat(clean);
         return isNaN(num) ? 0 : num;
@@ -136,6 +129,7 @@
             db.meses = [];
             db.dados = {};
 
+            // O processamento começa na linha 3 (índice 2) onde começam os meses
             for (let i = 2; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/"/g, ''));
                 
@@ -144,16 +138,14 @@
                 const mes = c[0].trim().toUpperCase();
                 db.meses.push(mes);
                 
-                // Mapeamento baseado no arquivo EI_SREG
+                // MAPEAMENTO BASEADO NA PLANILHA EI_SREG:
+                // CONTA 16: R$ 2025 (Col B/1), R$ 2026 (Col C/2)
+                // CONTA 21: R$ 2025 (Col G/6), R$ 2026 (Col H/7)
+                // CONTA 22: R$ 2025 (Col L/11), R$ 2026 (Col M/12)
                 db.dados[mes] = {
-                    sreg_agua: { 
-                        r25: parseVal(c[1]), r26: parseVal(c[2]), 
-                        u25: parseVal(c[3]), u26: parseVal(c[4]), label: 'M³' 
-                    },
-                    sreg_energia: { 
-                        r25: parseVal(c[5]), r26: parseVal(c[6]), 
-                        u25: parseVal(c[7]), u26: parseVal(c[8]), label: 'KWH' 
-                    }
+                    "16": { r25: parseVal(c[1]), r26: parseVal(c[2]) },
+                    "21": { r25: parseVal(c[6]), r26: parseVal(c[7]) },
+                    "22": { r25: parseVal(c[11]), r26: parseVal(c[12]) }
                 };
             }
 
@@ -188,12 +180,10 @@
         const info = db.dados[mes][conta];
         const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         
-        document.getElementById('nomeConta').innerText = document.querySelector(`#contaSelect option[value="${conta}"]`).text;
+        document.getElementById('nomeConta').innerText = `CONTA ${conta}`;
         
         document.getElementById('v2025').innerText = f(info.r25);
-        document.getElementById('u2025').innerText = `${info.u25.toLocaleString('pt-BR')} ${info.label}`;
         document.getElementById('v2026').innerText = f(info.r26);
-        document.getElementById('u2026').innerText = `${info.u26.toLocaleString('pt-BR')} ${info.label}`;
 
         document.getElementById('m2025').innerText = f(getAverage(conta, 'r25'));
         document.getElementById('m2026').innerText = f(getAverage(conta, 'r26'));
@@ -233,14 +223,14 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } } },
+                plugins: { legend: { labels: { color: '#ffffff' } } },
                 scales: {
                     y: { 
                         beginAtZero: true,
                         grid: { color: 'rgba(255,255,255,0.05)' }, 
                         ticks: { color: '#8892b0' } 
                     },
-                    x: { grid: { display: false }, ticks: { color: '#8892b0' } }
+                    x: { ticks: { color: '#8892b0' } }
                 }
             }
         });
@@ -249,6 +239,6 @@
     document.getElementById('mesSelect').onchange = updateUI;
     document.getElementById('contaSelect').onchange = updateUI;
     loadData();
- </script>
+</script>
 </body>
 </html>
