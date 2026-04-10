@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard GOP - Realtime</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #050a1a;
+            --bg-card: #0d1b35;
+            --accent: #00d2ff;
+            --text: #ffffff;
+            --text-dim: #a0b0c5;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            width: 120px;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .selectors {
+            display: flex;
+            gap: 15px;
+        }
+
+        select {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+
+        .card h3 {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .card p {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .status {
+            font-size: 0.7rem;
+            margin-top: 20px;
+            color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <img src="BAST.png" alt="Logo" class="logo">
+        <div class="selectors">
+            <select id="mesSelect"></select>
+            <select id="contaSelect">
+                <option value="11">Conta 11</option>
+                <option value="23">Conta 23</option>
+                <option value="24">Conta 24</option>
+                <option value="25">Conta 25</option>
+                <option value="27">Conta 27</option>
+                <option value="28">Conta 28</option>
+                <option value="36">Conta 36</option>
+                <option value="39">Conta 39</option>
+                <option value="42">Conta 42</option>
+            </select>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="card">
+            <h3>Saldo Anterior</h3>
+            <p id="saldoAnterior">R$ 0,00</p>
+        </div>
+        <div class="card">
+            <h3>Aquisição</h3>
+            <p id="aquisicao">R$ 0,00</p>
+        </div>
+        <div class="card">
+            <h3>Consumo</h3>
+            <p id="consumo" style="color: #ff4d4d;">R$ 0,00</p>
+        </div>
+        <div class="card">
+            <h3>Saldo Atual</h3>
+            <p id="saldoAtual" style="color: #00ff88;">R$ 0,00</p>
+        </div>
+    </div>
+
+    <p class="status" id="lastUpdate">Carregando dados da planilha...</p>
+
+    <script>
+        // Substitua pelo seu link CSV do Google Sheets
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1190920077&single=true&output=csv'; 
+        
+        let globalData = [];
+
+        async function fetchData() {
+            try {
+                const response = await fetch(SHEET_URL);
+                const csvText = await response.text();
+                processData(csvText);
+            } catch (error) {
+                document.getElementById('lastUpdate').innerText = "Erro ao carregar dados.";
+            }
+        }
+
+        function processData(csv) {
+            const lines = csv.split('\n');
+            const months = [];
+            
+            // O mapeamento de colunas segue a ordem da sua planilha 
+            const colMap = {
+                "11": 1, "23": 5, "24": 9, "25": 13, "27": 17, 
+                "28": 21, "36": 25, "39": 29, "42": 33
+            };
+
+            const data = {};
+            
+            lines.slice(2).forEach(line => {
+                const cols = line.split(',');
+                if (cols[0]) {
+                    const mes = cols[0].trim();
+                    months.push(mes);
+                    data[mes] = {};
+                    
+                    for (let c in colMap) {
+                        const startIdx = colMap[c];
+                        data[mes][c] = {
+                            ant: cols[startIdx] || "0",
+                            aq: cols[startIdx + 1] || "0",
+                            con: cols[startIdx + 2] || "0",
+                            atu: cols[startIdx + 3] || "0"
+                        };
+                    }
+                }
+            });
+
+            globalData = data;
+            populateMonths(months);
+            updateView();
+            document.getElementById('lastUpdate').innerText = "Dados sincronizados com Google Sheets";
+        }
+
+        function populateMonths(months) {
+            const select = document.getElementById('mesSelect');
+            select.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+
+        function updateView() {
+            const mes = document.getElementById('mesSelect').value;
+            const conta = document.getElementById('contaSelect').value;
+            const entry = globalData[mes][conta];
+
+            const format = (val) => parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            document.getElementById('saldoAnterior').innerText = format(entry.ant);
+            document.getElementById('aquisicao').innerText = format(entry.aq);
+            document.getElementById('consumo').innerText = format(entry.con);
+            document.getElementById('saldoAtual').innerText = format(entry.atu);
+        }
+
+        document.getElementById('mesSelect').addEventListener('change', updateView);
+        document.getElementById('contaSelect').addEventListener('change', updateView);
+
+        fetchData();
+    </script>
+</body>
+</html>
