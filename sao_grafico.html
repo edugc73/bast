@@ -97,15 +97,15 @@
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1699791883&single=true&output=csv'; 
     
-    let db = { meses: [], dados: {} };
+  let db = { meses: [], dados: {} };
     let myChart = null;
 
-    // Função de tratamento de números robusta
     function parseVal(v) {
         if (!v) return 0;
-        // Remove espaços e garante que o valor seja tratado como string
-        let text = v.toString().trim();
-        // Converte para float (o CSV usa ponto para decimais, ex: 140631.01)
+        // Remove espaços e aspas extras que o CSV pode gerar
+        let text = v.toString().replace(/"/g, '').trim();
+        // Se o CSV usar ponto como milhar e vírgula como decimal, ou vice-versa, 
+        // esta lógica garante a conversão correta para o padrão do JS (ponto decimal)
         let num = parseFloat(text);
         return isNaN(num) ? 0 : num;
     }
@@ -114,27 +114,32 @@
         try {
             const response = await fetch(SHEET_URL);
             const csvText = await response.text();
-            // Divide as linhas e remove linhas vazias
-            const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
+            
+            // Filtra linhas vazias
+            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
             db.meses = [];
             db.dados = {};
 
-            // Começa do índice 1 para pular o cabeçalho
+            // Começamos do índice 1 (pula o cabeçalho)
             for (let i = 1; i < lines.length; i++) {
-                const c = lines[i].split(",");
+                // Regex para separar por vírgula apenas se não estiver entre aspas (mais seguro)
+                const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 
-                // Verifica se a linha tem colunas suficientes e se não é o cabeçalho repetido
-                if(c.length < 4 || c[0].toUpperCase().includes("MESES")) continue;
+                if(!c[0] || c[0].toUpperCase().includes("MESES")) continue;
                 
                 const mes = c[0].trim().toUpperCase();
                 db.meses.push(mes);
                 
-                // Mapeamento exato das colunas do seu arquivo
+                // Mapeamento rigoroso das colunas:
+                // c[0] = MESES
+                // c[1] = RP (2025) INSCRITO
+                // c[2] = RP (2025) REAL
+                // c[3] = NE (a liquidar) REAL
                 db.dados[mes] = {
-                    inscrito: parseVal(c[1]), // RP (2025) INSCRITO
-                    real: parseVal(c[2]),     // RP (2025) REAL
-                    liquidar: parseVal(c[3])  // NE (a liquidar) REAL
+                    inscrito: parseVal(c[1]),
+                    real:     parseVal(c[2]),
+                    liquidar: parseVal(c[3])
                 };
             }
 
@@ -144,11 +149,12 @@
             updateUI();
             document.getElementById('status').innerText = "● Dados Sincronizados";
         } catch (e) {
-            console.error(e);
+            console.error("Erro no processamento:", e);
             document.getElementById('status').innerText = "Erro ao carregar dados.";
         }
     }
 
+    // Mantenha as funções updateUI() e updateChart() como estavam no código anterior
     function updateUI() {
         const sel = document.getElementById('mesSelect');
         if (!sel.value) return;
