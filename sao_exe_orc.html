@@ -83,7 +83,7 @@
             <p id="txtEmp">0%</p>
             <span id="metaEmp">Meta: 0%</span>
         </div>
-        <div class="card">
+        <div class="card (BAST)">
             <h3>LIQUIDAÇÃO (BAST)</h3>
             <p id="txtLiq">0%</p>
             <span id="metaLiq">Meta: 0%</span>
@@ -105,12 +105,13 @@
 
     function parsePercentage(v) {
         if (!v || v.trim() === "") return 0;
+        // Limpeza de caracteres especiais e ajuste de vírgula para ponto
         let text = v.toString().replace(/"/g, '').replace('%', '').replace(',', '.').trim();
         let num = parseFloat(text);
+        
         if (isNaN(num)) return 0;
-        // Se for um decimal puro (ex: 0.59), converte para percentual (59%)
-        // Mas apenas se o valor for menor ou igual a 1
-        return (num <= 1 && num > 0 && !v.includes('%')) ? num * 100 : num;
+        // Retorna o valor tal como está na planilha para evitar multiplicações indevidas
+        return num;
     }
 
     async function loadData() {
@@ -122,14 +123,17 @@
             db.meses = [];
             db.dados = {};
 
-            // Começamos na linha 3 (índice 2) para saltar os dois cabeçalhos da planilha
-            for (let i = 2; i < lines.length; i++) {
+            // Começamos após os cabeçalhos. A verificação rigorosa do nome do mês limpa o "FOI EMPENHADO"
+            const mesesValidos = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+
+            for (let i = 0; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                
-                // Se não houver nome de mês na primeira coluna, ignora
-                if(!c[0] || c[0].trim() === "") continue;
+                if(!c[0]) continue;
                 
                 const mesNome = c[0].trim().toUpperCase();
+                
+                // Só processa se for um mês da lista oficial
+                if (!mesesValidos.includes(mesNome)) continue;
                 
                 db.meses.push(mesNome);
                 db.dados[mesNome] = {
@@ -159,7 +163,7 @@
         const info = db.dados[mes];
         if (!info) return;
 
-        const formatar = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) + "%";
+        const formatar = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
         
         document.getElementById('txtRP').innerText = formatar(info.rp_bast);
         document.getElementById('metaRP').innerText = "Meta: " + formatar(info.rp_meta);
@@ -203,7 +207,7 @@
                     legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } },
                     tooltip: { 
                         callbacks: { 
-                            label: (ctx) => ctx.dataset.label + ": " + ctx.raw.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + "%" 
+                            label: (ctx) => ctx.dataset.label + ": " + ctx.raw.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "%" 
                         } 
                     }
                 },
