@@ -94,21 +94,28 @@
         <canvas id="mainChart"></canvas>
     </div>
 
-    <div id="status">Sincronizando com SAO_EXE_ORÇAMENTARIA.csv...</div>
+    <div id="status">Sincronizando dados...</div>
 </div>
 
 <script>
-    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=339412832&single=true&output=csv'; 
+    const SHEET_URL = 'CONTAS.xlsx - SAO_EXE_ORÇAMENTARIA.csv'; 
     
     let db = { meses: [], dados: {} };
     let myChart = null;
+
+    // Lista de termos que devem ser ignorados na seleção de meses
+    const ignorar = ["MESES", "CRÉDITO RECEBIDO", "LIQUIDAÇÃO", "EMPENHADOS", "EMPENHOS", "SOBRE"];
 
     function parsePercentage(v) {
         if (!v) return 0;
         let text = v.toString().replace(/"/g, '').replace('%', '').trim();
         let num = parseFloat(text);
-        // Se o valor for decimal (ex: 0.85), converte para 85. Se já for 85, mantém.
-        return isNaN(num) ? 0 : (num <= 1 && num > 0 ? num * 100 : num);
+        
+        if (isNaN(num)) return 0;
+        
+        // Se o valor na planilha for decimal (ex: 0.9575 para 95.75%), multiplicamos por 100
+        // Caso já esteja como 95.75, mantemos o valor original.
+        return (num <= 1 && num > 0) ? num * 100 : num;
     }
 
     async function loadData() {
@@ -122,13 +129,17 @@
 
             for (let i = 1; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                if(!c[0] || c[0].toUpperCase().includes("MESES")) continue;
+                if(!c[0]) continue;
                 
-                const mes = c[0].trim().toUpperCase();
-                db.meses.push(mes);
+                const mesLimpo = c[0].trim().toUpperCase();
                 
-                // Mapeamento baseado nas colunas da planilha 
-                db.dados[mes] = {
+                // Filtro para garantir que apenas meses reais entrem na lista
+                const deveIgnorar = ignorar.some(termo => mesLimpo.includes(termo));
+                if (deveIgnorar) continue;
+
+                db.meses.push(mesLimpo);
+                
+                db.dados[mesLimpo] = {
                     rp_meta:   parsePercentage(c[1]),
                     rp_bast:   parsePercentage(c[2]),
                     emp_meta:  parsePercentage(c[3]),
@@ -153,16 +164,17 @@
         const info = db.dados[mes];
         if (!info) return;
 
-        const p = (v) => v.toFixed(2) + "%";
+        // Mostra o valor exato sem arredondamento forçado para 2 casas se houver mais precisão
+        const formatar = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) + "%";
         
-        document.getElementById('txtRP').innerText = p(info.rp_bast);
-        document.getElementById('metaRP').innerText = "Meta: " + p(info.rp_meta);
+        document.getElementById('txtRP').innerText = formatar(info.rp_bast);
+        document.getElementById('metaRP').innerText = "Meta: " + formatar(info.rp_meta);
         
-        document.getElementById('txtEmp').innerText = p(info.emp_bast);
-        document.getElementById('metaEmp').innerText = "Meta: " + p(info.emp_meta);
+        document.getElementById('txtEmp').innerText = formatar(info.emp_bast);
+        document.getElementById('metaEmp').innerText = "Meta: " + formatar(info.emp_meta);
         
-        document.getElementById('txtLiq').innerText = p(info.liq_bast);
-        document.getElementById('metaLiq').innerText = "Meta: " + p(info.liq_meta);
+        document.getElementById('txtLiq').innerText = formatar(info.liq_bast);
+        document.getElementById('metaLiq').innerText = "Meta: " + formatar(info.liq_meta);
 
         updateChart(mes);
     }
@@ -195,7 +207,11 @@
                 maintainAspectRatio: false,
                 plugins: { 
                     legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } },
-                    tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ": " + ctx.raw.toFixed(2) + "%" } }
+                    tooltip: { 
+                        callbacks: { 
+                            label: (ctx) => ctx.dataset.label + ": " + ctx.raw.toLocaleString('pt-BR') + "%" 
+                        } 
+                    }
                 },
                 scales: {
                     y: { 
