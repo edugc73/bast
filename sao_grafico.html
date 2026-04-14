@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard SAO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #050a1a;
+            --bg-card: rgba(13, 27, 53, 0.95);
+            --accent: #00d2ff;
+            --text: #ffffff;
+            --pos: #00ff88;
+            --neg: #ff4d4d;
+            --neutral: #ffcc00;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            margin: 0; padding: 20px;
+            background: radial-gradient(circle at top right, #0a1f44, #050a1a);
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 25px; background: var(--bg-card); border-radius: 15px;
+            margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .img-logo { height: 60px; width: auto; border-radius: 5px; }
+        .titulo-header { font-weight: 600; font-size: 1.1rem; color: var(--accent); }
+
+        .grid-cards {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px; margin-bottom: 25px;
+        }
+
+        .card {
+            background: var(--bg-card); padding: 20px; border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05); text-align: center;
+        }
+
+        .card h3 { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; margin-bottom: 10px; }
+        .card p { font-size: 1.3rem; font-weight: 600; margin: 0; }
+
+        .content-area {
+            background: var(--bg-card); padding: 25px; border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        canvas { width: 100% !important; height: 380px !important; }
+        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
+    </style>
+</head>
+<body>
+ 
+<div class="container">
+    <header>
+        <div class="logo-area">
+            <img src="dom.gif" alt="Logo" class="img-logo">
+            <span class="titulo-header">PRESTAÇÃO DE CONTAS - SAO</span>
+        </div>
+        <div class="controls">
+            <select id="mesSelect"></select>
+        </div>
+    </header>
+
+    <div class="grid-cards">
+        <div class="card">
+            <h3>RP (2025) Inscrito</h3>
+            <p id="txtInscrito">R$ 0,00</p>
+        </div>
+        <div class="card">
+            <h3>RP (2025) Real</h3>
+            <p id="txtReal" style="color: var(--pos)">R$ 0,00</p>
+        </div>
+        <div class="card">
+            <h3>NE a Liquidar</h3>
+            <p id="txtLiquidado" style="color: var(--neutral)">R$ 0,00</p>
+        </div>
+    </div>
+
+    <div class="content-area">
+        <canvas id="mainChart"></canvas>
+    </div>
+
+    <div id="status">Sincronizando com CONTAS.xlsx...</div>
+</div>
+
+<script>
+    // URL do arquivo CSV fornecido
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1699791883&single=true&output=csv'; 
+    
+    let db = { meses: [], dados: {} };
+    let myChart = null;
+
+    function parseVal(v) {
+        if (!v) return 0;
+        let text = v.toString().trim();
+        let num = parseFloat(text);
+        return isNaN(num) ? 0 : num;
+    }
+
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL);
+            const csvText = await response.text();
+            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
+            
+            db.meses = [];
+            db.dados = {};
+
+            // Mapeamento baseado no arquivo: MESES(0), RP Inscrito(1), RP Real(2), NE Real(3)
+            for (let i = 1; i < lines.length; i++) {
+                const c = lines[i].split(",");
+                if(!c[0] || c[0].trim() === "" || c[0].toUpperCase().includes("MESES")) continue;
+                
+                const mes = c[0].trim().toUpperCase();
+                db.meses.push(mes);
+                
+                db.dados[mes] = {
+                    inscrito: parseVal(c[1]),
+                    real: parseVal(c[2]),
+                    liquidar: parseVal(c[3])
+                };
+            }
+
+            const selMes = document.getElementById('mesSelect');
+            selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+            updateUI();
+            document.getElementById('status').innerText = "● Dados Sincronizados";
+        } catch (e) {
+            document.getElementById('status').innerText = "Erro ao carregar dados.";
+        }
+    }
+
+    function updateUI() {
+        const mes = document.getElementById('mesSelect').value;
+        const info = db.dados[mes];
+        if (!info) return;
+
+        const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        document.getElementById('txtInscrito').innerText = f(info.inscrito);
+        document.getElementById('txtReal').innerText = f(info.real);
+        document.getElementById('txtLiquidado').innerText = f(info.liquidar);
+
+        updateChart();
+    }
+
+    function updateChart() {
+        if (myChart) myChart.destroy();
+        myChart = new Chart(document.getElementById('mainChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: db.meses,
+                datasets: [
+                    {
+                        label: 'RP (2025) REAL',
+                        data: db.meses.map(m => db.dados[m].real),
+                        backgroundColor: '#00ff88',
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'NE (a liquidar) REAL',
+                        data: db.meses.map(m => db.dados[m].liquidar),
+                        backgroundColor: '#ffcc00',
+                        borderRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } } 
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        ticks: { color: '#8892b0', callback: (value) => 'R$ ' + value.toLocaleString('pt-BR') } 
+                    },
+                    x: { ticks: { color: '#8892b0' } }
+                }
+            }
+        });
+    }
+
+    document.getElementById('mesSelect').onchange = updateUI;
+    loadData();
+</script>
+</body>
+</html>
