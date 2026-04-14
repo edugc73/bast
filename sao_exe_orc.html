@@ -103,18 +103,11 @@
     let db = { meses: [], dados: {} };
     let myChart = null;
 
-    // Lista de termos que devem ser ignorados na seleção de meses
-    const ignorar = ["MESES", "CRÉDITO RECEBIDO", "LIQUIDAÇÃO", "EMPENHADOS", "EMPENHOS", "SOBRE"];
-
     function parsePercentage(v) {
         if (!v) return 0;
         let text = v.toString().replace(/"/g, '').replace('%', '').trim();
         let num = parseFloat(text);
-        
         if (isNaN(num)) return 0;
-        
-        // Se o valor na planilha for decimal (ex: 0.9575 para 95.75%), multiplicamos por 100
-        // Caso já esteja como 95.75, mantemos o valor original.
         return (num <= 1 && num > 0) ? num * 100 : num;
     }
 
@@ -131,15 +124,21 @@
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if(!c[0]) continue;
                 
-                const mesLimpo = c[0].trim().toUpperCase();
+                const mesBruto = c[0].trim().toUpperCase();
                 
-                // Filtro para garantir que apenas meses reais entrem na lista
-                const deveIgnorar = ignorar.some(termo => mesLimpo.includes(termo));
-                if (deveIgnorar) continue;
+                // CRITÉRIO DE VALIDAÇÃO: 
+                // 1. Não pode conter palavras de cabeçalho
+                // 2. A segunda coluna (RP Meta) deve conter um número válido
+                const cabecalhos = ["MESES", "CRÉDITO", "LIQUIDAÇÃO", "EMPENHADOS", "EMPENHOS", "SOBRE"];
+                const isHeader = cabecalhos.some(txt => mesBruto === txt || mesBruto.startsWith("EMPENHOS"));
+                
+                // Valida se a linha tem dados financeiros (pelo menos um número na coluna 1 ou 2)
+                const temDados = c[1] && !isNaN(parseFloat(c[1].replace('%','')));
 
-                db.meses.push(mesLimpo);
-                
-                db.dados[mesLimpo] = {
+                if (isHeader || !temDados) continue;
+
+                db.meses.push(mesBruto);
+                db.dados[mesBruto] = {
                     rp_meta:   parsePercentage(c[1]),
                     rp_bast:   parsePercentage(c[2]),
                     emp_meta:  parsePercentage(c[3]),
@@ -164,7 +163,6 @@
         const info = db.dados[mes];
         if (!info) return;
 
-        // Mostra o valor exato sem arredondamento forçado para 2 casas se houver mais precisão
         const formatar = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 4 }) + "%";
         
         document.getElementById('txtRP').innerText = formatar(info.rp_bast);
@@ -209,7 +207,7 @@
                     legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } },
                     tooltip: { 
                         callbacks: { 
-                            label: (ctx) => ctx.dataset.label + ": " + ctx.raw.toLocaleString('pt-BR') + "%" 
+                            label: (ctx) => ctx.dataset.label + ": " + ctx.raw.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + "%" 
                         } 
                     }
                 },
