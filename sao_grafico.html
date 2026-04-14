@@ -101,14 +101,20 @@
     let myChart = null;
 
     function parseVal(v) {
-        if (!v) return 0;
-        // Remove espaços e aspas extras que o CSV pode gerar
-        let text = v.toString().replace(/"/g, '').trim();
-        // Se o CSV usar ponto como milhar e vírgula como decimal, ou vice-versa, 
-        // esta lógica garante a conversão correta para o padrão do JS (ponto decimal)
-        let num = parseFloat(text);
-        return isNaN(num) ? 0 : num;
+    if (!v) return 0;
+    
+    let text = v.toString().replace(/"/g, '').trim();
+    if (text.includes(',') && !text.includes('.')) {
+        text = text.replace(',', '.');
+    } 
+   
+    else if (text.includes(',') && text.includes('.')) {
+        text = text.replace(/\./g, '').replace(',', '.');
     }
+
+    let num = parseFloat(text);
+    return isNaN(num) ? 0 : num;
+}
 
     async function loadData() {
         try {
