@@ -104,11 +104,13 @@
     let myChart = null;
 
     function parsePercentage(v) {
-        if (!v) return 0;
-        let text = v.toString().replace(/"/g, '').replace('%', '').trim();
+        if (!v || v.trim() === "") return 0;
+        let text = v.toString().replace(/"/g, '').replace('%', '').replace(',', '.').trim();
         let num = parseFloat(text);
         if (isNaN(num)) return 0;
-        return (num <= 1 && num > 0) ? num * 100 : num;
+        // Se for um decimal puro (ex: 0.59), converte para percentual (59%)
+        // Mas apenas se o valor for menor ou igual a 1
+        return (num <= 1 && num > 0 && !v.includes('%')) ? num * 100 : num;
     }
 
     async function loadData() {
@@ -120,25 +122,17 @@
             db.meses = [];
             db.dados = {};
 
-            for (let i = 1; i < lines.length; i++) {
+            // Começamos na linha 3 (índice 2) para saltar os dois cabeçalhos da planilha
+            for (let i = 2; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                if(!c[0]) continue;
                 
-                const mesBruto = c[0].trim().toUpperCase();
+                // Se não houver nome de mês na primeira coluna, ignora
+                if(!c[0] || c[0].trim() === "") continue;
                 
-                // CRITÉRIO DE VALIDAÇÃO: 
-                // 1. Não pode conter palavras de cabeçalho
-                // 2. A segunda coluna (RP Meta) deve conter um número válido
-                const cabecalhos = ["MESES", "CRÉDITO", "LIQUIDAÇÃO", "EMPENHADOS", "EMPENHOS", "SOBRE"];
-                const isHeader = cabecalhos.some(txt => mesBruto === txt || mesBruto.startsWith("EMPENHOS"));
+                const mesNome = c[0].trim().toUpperCase();
                 
-                // Valida se a linha tem dados financeiros (pelo menos um número na coluna 1 ou 2)
-                const temDados = c[1] && !isNaN(parseFloat(c[1].replace('%','')));
-
-                if (isHeader || !temDados) continue;
-
-                db.meses.push(mesBruto);
-                db.dados[mesBruto] = {
+                db.meses.push(mesNome);
+                db.dados[mesNome] = {
                     rp_meta:   parsePercentage(c[1]),
                     rp_bast:   parsePercentage(c[2]),
                     emp_meta:  parsePercentage(c[3]),
@@ -154,12 +148,14 @@
             updateUI();
             document.getElementById('status').innerText = "● Dados Sincronizados";
         } catch (e) {
+            console.error(e);
             document.getElementById('status').innerText = "Erro ao carregar dados.";
         }
     }
 
     function updateUI() {
-        const mes = document.getElementById('mesSelect').value;
+        const sel = document.getElementById('mesSelect');
+        const mes = sel.value;
         const info = db.dados[mes];
         if (!info) return;
 
