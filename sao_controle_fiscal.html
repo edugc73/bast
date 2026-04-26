@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Execução Orçamentária - Responsáveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #050a1a;
+            --bg-card: rgba(13, 27, 53, 0.95);
+            --accent: #00d2ff;
+            --text: #ffffff;
+            --meta: #8892b0;
+            --bast: #00ff88;
+            --selected: #00d2ff;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            margin: 0; padding: 20px;
+            background: radial-gradient(circle at top right, #0a1f44, #050a1a);
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 25px; background: var(--bg-card); border-radius: 15px;
+            margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .img-logo { height: 60px; width: auto; }
+        .titulo-header { font-weight: 600; font-size: 1.1rem; color: var(--accent); }
+
+        .grid-cards {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin-bottom: 25px;
+        }
+
+        .card {
+            background: var(--bg-card); padding: 15px; border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.05); text-align: center;
+            cursor: pointer; transition: 0.3s;
+        }
+
+        .card:hover { border-color: var(--accent); transform: translateY(-3px); }
+        .card.active { border-color: var(--selected); background: rgba(0, 210, 255, 0.1); }
+
+        .card h3 { font-size: 0.75rem; color: #8892b0; text-transform: uppercase; margin-bottom: 8px; }
+        .card p { font-size: 1.2rem; font-weight: 600; margin: 0; color: var(--bast); }
+        .card span { font-size: 0.7rem; color: #8892b0; }
+
+        .content-area {
+            background: var(--bg-card); padding: 25px; border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        canvas { width: 100% !important; height: 350px !important; }
+        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo-area">
+            <img src="dom.gif" alt="Logo" class="img-logo">
+            <span class="titulo-header">EXECUÇÃO POR RESPONSÁVEL - SAO</span>
+        </div>
+    </header>
+
+    <div class="grid-cards" id="responsaveisGrid"></div>
+
+    <div class="content-area">
+        <canvas id="mainChart"></canvas>
+    </div>
+
+    <div id="status">Sincronizando dados da planilha...</div>
+</div>
+
+<script>
+    // URL da Planilha (Mantenha o GID correto da sua nova aba se necessário)
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=49697303&single=true&output=csv'; 
+    
+    let db = { responsaveis: [], dados: {} };
+    let myChart = null;
+
+    function parseValue(v) {
+        if (!v || v.trim() === "") return 0;
+        let text = v.toString().replace(/"/g, '').replace('R$', '').replace('.', '').replace(',', '.').trim();
+        let num = parseFloat(text);
+        return isNaN(num) ? 0 : num;
+    }
+
+    const formatarMoeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL);
+            const csvText = await response.text();
+            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
+            
+            db.responsaveis = [];
+            db.dados = {};
+
+            // Ignorar cabeçalho (i=1)
+            for (let i = 1; i < lines.length; i++) {
+                const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                if(!c[0]) continue;
+                
+                const nome = c[0].trim().toUpperCase();
+                db.responsaveis.push(nome);
+                db.dados[nome] = {
+                    restos: parseValue(c[1]),
+                    empenhos: parseValue(c[2])
+                };
+            }
+
+            renderCards();
+            // Seleciona o primeiro responsável por padrão
+            if (db.responsaveis.length > 0) updateUI(db.responsaveis[0]);
+
+            document.getElementById('status').innerText = "● Dados Sincronizados";
+        } catch (e) {
+            console.error(e);
+            document.getElementById('status').innerText = "Erro ao carregar dados da planilha.";
+        }
+    }
+
+    function renderCards() {
+        const grid = document.getElementById('responsaveisGrid');
+        grid.innerHTML = db.responsaveis.map(nome => `
+            <div class="card" id="card-${nome.replace(/\s+/g, '')}" onclick="updateUI('${nome}')">
+                <h3>${nome}</h3>
+                <p>${formatarMoeda(db.dados[nome].restos)}</p>
+                <span>Restos a Pagar</span>
+            </div>
+        `).join('');
+    }
+
+    function updateUI(nome) {
+        // Atualiza estilo dos cards
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+        const activeCard = document.getElementById(`card-${nome.replace(/\s+/g, '')}`);
+        if (activeCard) activeCard.classList.add('active');
+
+        updateChart(nome);
+    }
+
+    function updateChart(nome) {
+        if (myChart) myChart.destroy();
+        const info = db.dados[nome];
+
+        myChart = new Chart(document.getElementById('mainChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['RESTOS A PAGAR', 'EMPENHOS A LIQUIDAR'],
+                datasets: [
+                    {
+                        label: nome,
+                        data: [info.restos, info.empenhos],
+                        backgroundColor: ['#00d2ff', '#00ff88'],
+                        borderRadius: 8,
+                        barThickness: 60
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: { 
+                        callbacks: { 
+                            label: (ctx) => " Valor: " + formatarMoeda(ctx.raw)
+                        } 
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        ticks: { 
+                            color: '#8892b0', 
+                            callback: (v) => v.toLocaleString('pt-BR', { notation: 'compact' }) 
+                        } 
+                    },
+                    x: { ticks: { color: '#ffffff' } }
+                }
+            }
+        });
+    }
+
+    loadData();
+</script>
+</body>
+</html>
