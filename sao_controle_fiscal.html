@@ -42,7 +42,6 @@
             gap: 15px; margin-bottom: 25px;
         }
 
-        /* translate="no" aplicado via CSS para reforçar o bloqueio de tradução */
         .card {
             background: var(--bg-card); padding: 15px; border-radius: 15px;
             border: 1px solid rgba(255,255,255,0.05); text-align: center;
@@ -103,20 +102,16 @@
         try {
             const response = await fetch(SHEET_URL);
             const csvText = await response.text();
-            // Split considerando quebras de linha e removendo linhas vazias
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
             db.responsaveis = [];
             db.dados = {};
 
-            // Ignorar cabeçalho (i=1)
             for (let i = 1; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if(!c[0]) continue;
                 
-                // Pega o nome EXATAMENTE como está na planilha, apenas limpando espaços extras
                 const nomeRaw = c[0].replace(/"/g, '').trim();
-                
                 db.responsaveis.push(nomeRaw);
                 db.dados[nomeRaw] = {
                     restos: parseValue(c[1]),
@@ -136,7 +131,6 @@
 
     function renderCards() {
         const grid = document.getElementById('responsaveisGrid');
-        // O atributo translate="no" impede que "TEN" vire "DEZ"
         grid.innerHTML = db.responsaveis.map(nome => `
             <div class="card" id="card-${nome.replace(/\s+/g, '')}" onclick="updateUI('${nome}')" translate="no">
                 <h3>${nome}</h3>
@@ -166,7 +160,8 @@
                     {
                         label: nome,
                         data: [info.restos, info.empenhos],
-                        backgroundColor: ['#00d2ff', '#00ff88'],
+                        // Cores sincronizadas com o dashboard: Verde para Restos e Azul/Meta para Empenhos
+                        backgroundColor: ['#00ff88', '#8892b0'],
                         borderRadius: 8,
                         barThickness: 50
                     }
