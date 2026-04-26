@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Execução Orçamentária - SAO</title>
+    <title>Execução Orçamentária - Responsáveis</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -42,7 +42,6 @@
             gap: 15px; margin-bottom: 25px;
         }
 
-        /* translate="no" aplicado via CSS para reforçar o bloqueio de tradução */
         .card {
             background: var(--bg-card); padding: 15px; border-radius: 15px;
             border: 1px solid rgba(255,255,255,0.05); text-align: center;
@@ -52,7 +51,7 @@
         .card:hover { border-color: var(--accent); transform: translateY(-3px); }
         .card.active { border-color: var(--selected); background: rgba(0, 210, 255, 0.1); }
 
-        .card h3 { font-size: 0.85rem; color: #8892b0; margin-bottom: 8px; }
+        .card h3 { font-size: 0.75rem; color: #8892b0; text-transform: uppercase; margin-bottom: 8px; }
         .card p { font-size: 1.2rem; font-weight: 600; margin: 0; color: var(--bast); }
         .card span { font-size: 0.7rem; color: #8892b0; }
 
@@ -67,7 +66,7 @@
 </head>
 <body>
 
-<div class="container" translate="no">
+<div class="container">
     <header>
         <div class="logo-area">
             <img src="dom.gif" alt="Logo" class="img-logo">
@@ -81,10 +80,11 @@
         <canvas id="mainChart"></canvas>
     </div>
 
-    <div id="status">Sincronizando dados...</div>
+    <div id="status">Sincronizando dados da planilha...</div>
 </div>
 
 <script>
+    // URL da Planilha (Mantenha o GID correto da sua nova aba se necessário)
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=339412832&single=true&output=csv'; 
     
     let db = { responsaveis: [], dados: {} };
@@ -92,7 +92,7 @@
 
     function parseValue(v) {
         if (!v || v.trim() === "") return 0;
-        let text = v.toString().replace(/"/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+        let text = v.toString().replace(/"/g, '').replace('R$', '').replace('.', '').replace(',', '.').trim();
         let num = parseFloat(text);
         return isNaN(num) ? 0 : num;
     }
@@ -103,7 +103,6 @@
         try {
             const response = await fetch(SHEET_URL);
             const csvText = await response.text();
-            // Split considerando quebras de linha e removendo linhas vazias
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
             db.responsaveis = [];
@@ -114,31 +113,29 @@
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if(!c[0]) continue;
                 
-                // Pega o nome EXATAMENTE como está na planilha, apenas limpando espaços extras
-                const nomeRaw = c[0].replace(/"/g, '').trim();
-                
-                db.responsaveis.push(nomeRaw);
-                db.dados[nomeRaw] = {
+                const nome = c[0].trim().toUpperCase();
+                db.responsaveis.push(nome);
+                db.dados[nome] = {
                     restos: parseValue(c[1]),
                     empenhos: parseValue(c[2])
                 };
             }
 
             renderCards();
+            // Seleciona o primeiro responsável por padrão
             if (db.responsaveis.length > 0) updateUI(db.responsaveis[0]);
 
             document.getElementById('status').innerText = "● Dados Sincronizados";
         } catch (e) {
             console.error(e);
-            document.getElementById('status').innerText = "Erro ao carregar dados.";
+            document.getElementById('status').innerText = "Erro ao carregar dados da planilha.";
         }
     }
 
     function renderCards() {
         const grid = document.getElementById('responsaveisGrid');
-        // O atributo translate="no" impede que "TEN" vire "DEZ"
         grid.innerHTML = db.responsaveis.map(nome => `
-            <div class="card" id="card-${nome.replace(/\s+/g, '')}" onclick="updateUI('${nome}')" translate="no">
+            <div class="card" id="card-${nome.replace(/\s+/g, '')}" onclick="updateUI('${nome}')">
                 <h3>${nome}</h3>
                 <p>${formatarMoeda(db.dados[nome].restos)}</p>
                 <span>Restos a Pagar</span>
@@ -147,6 +144,7 @@
     }
 
     function updateUI(nome) {
+        // Atualiza estilo dos cards
         document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
         const activeCard = document.getElementById(`card-${nome.replace(/\s+/g, '')}`);
         if (activeCard) activeCard.classList.add('active');
@@ -168,7 +166,7 @@
                         data: [info.restos, info.empenhos],
                         backgroundColor: ['#00d2ff', '#00ff88'],
                         borderRadius: 8,
-                        barThickness: 50
+                        barThickness: 60
                     }
                 ]
             },
@@ -179,7 +177,7 @@
                     legend: { display: false },
                     tooltip: { 
                         callbacks: { 
-                            label: (ctx) => " " + ctx.label + ": " + formatarMoeda(ctx.raw)
+                            label: (ctx) => " Valor: " + formatarMoeda(ctx.raw)
                         } 
                     }
                 },
@@ -188,8 +186,8 @@
                         beginAtZero: true, 
                         grid: { color: 'rgba(255,255,255,0.05)' }, 
                         ticks: { 
-                            color: '#8892b0',
-                            callback: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' })
+                            color: '#8892b0', 
+                            callback: (v) => v.toLocaleString('pt-BR', { notation: 'compact' }) 
                         } 
                     },
                     x: { ticks: { color: '#ffffff' } }
