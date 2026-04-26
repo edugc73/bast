@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Saldos - SAO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #050a1a;
+            --bg-card: rgba(13, 27, 53, 0.95);
+            --accent: #00d2ff;
+            --text: #ffffff;
+            --meta: #8892b0;
+            --bast: #00ff88;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            margin: 0; padding: 20px;
+            background: radial-gradient(circle at top right, #0a1f44, #050a1a);
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 25px; background: var(--bg-card); border-radius: 15px;
+            margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .img-logo { height: 50px; width: auto; }
+        
+        select {
+            background: #1a2a4a; color: white; border: 1px solid var(--accent);
+            padding: 8px 15px; border-radius: 8px; outline: none; cursor: pointer;
+        }
+
+        .summary-card {
+            background: var(--bg-card); padding: 25px; border-radius: 20px;
+            border: 1px solid rgba(0, 210, 255, 0.2); text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .summary-card h2 { font-size: 0.9rem; color: var(--meta); text-transform: uppercase; margin: 0; }
+        .summary-card p { font-size: 2.5rem; font-weight: 600; margin: 10px 0; color: var(--bast); }
+
+        .content-area {
+            background: var(--bg-card); padding: 20px; border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; color: var(--accent); padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; }
+        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; }
+        
+        tr:hover { background: rgba(255,255,255,0.02); }
+        .val-num { text-align: right; font-weight: 600; }
+
+        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container" translate="no">
+    <header>
+        <div class="logo-area">
+            <img src="dom.gif" alt="Logo" class="img-logo">
+            <span style="font-weight: 600; color: var(--accent);">SALDOS POR RESPONSÁVEL</span>
+        </div>
+        <select id="repSelect" onchange="updateUI()">
+            <option value="">Carregando...</option>
+        </select>
+    </header>
+
+    <div class="summary-card">
+        <h2 id="displayNome">Saldo Total</h2>
+        <p id="totalGeral">R$ 0,00</p>
+    </div>
+
+    <div class="content-area">
+        <table>
+            <thead>
+                <tr>
+                    <th>EMPRESA / CONTRATO</th>
+                    <th class="val-num">SALDO DISPONÍVEL</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="status">Sincronizando...</div>
+</div>
+
+<script>
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=87175636&single=true&output=csv'; 
+    
+    let rawData = [];
+    let responsaveis = {};
+
+    function parseValue(v) {
+        if (!v || v.trim() === "") return 0;
+        let text = v.toString().replace(/"/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+        let num = parseFloat(text);
+        return isNaN(num) ? 0 : num;
+    }
+
+    const formatarMoeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL);
+            const csvText = await response.text();
+            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
+            
+            responsaveis = {};
+
+            // Começa do i=1 para pular cabeçalho
+            for (let i = 1; i < lines.length; i++) {
+                const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                if(c.length < 3) continue;
+
+                const resp = c[0].replace(/"/g, '').trim();
+                const empresa = c[1].replace(/"/g, '').trim();
+                const saldo = parseValue(c[2]);
+
+                if (!responsaveis[resp]) {
+                    responsaveis[resp] = { empresas: [], total: 0 };
+                }
+                
+                responsaveis[resp].empresas.push({ nome: empresa, valor: saldo });
+                responsaveis[resp].total += saldo;
+            }
+
+            const select = document.getElementById('repSelect');
+            const nomes = Object.keys(responsaveis).sort();
+            select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
+
+            updateUI();
+            document.getElementById('status').innerText = "● Dados Atualizados";
+        } catch (e) {
+            document.getElementById('status').innerText = "Erro na sincronização.";
+        }
+    }
+
+    function updateUI() {
+        const selected = document.getElementById('repSelect').value;
+        const data = responsaveis[selected];
+        
+        if (!data) return;
+
+        document.getElementById('displayNome').innerText = `Saldo Total - ${selected}`;
+        document.getElementById('totalGeral').innerText = formatarMoeda(data.total);
+
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = data.empresas.map(emp => `
+            <tr>
+                <td>${emp.nome}</td>
+                <td class="val-num" style="color: ${emp.valor > 0 ? 'var(--bast)' : 'var(--meta)'}">
+                    ${formatarMoeda(emp.valor)}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    loadData();
+</script>
+</body>
+</html>
