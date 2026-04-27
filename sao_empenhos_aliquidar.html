@@ -75,7 +75,7 @@
             <span style="font-weight: 600; color: var(--accent);">GESTOR DE EMPENHOS - SAO</span>
         </div>
         <select id="repSelect" onchange="updateUI()">
-            <option value="">Aguarde...</option>
+            <option value="">Carregando dados...</option>
         </select>
     </header>
 
@@ -151,24 +151,22 @@
             responsaveis = {};
             let currentResp = "";
 
-            // Lista de patentes permitidas para identificar um novo responsável
-            const patentesPermitidas = ["SGT", "SO", "CAP", "TEN", "MAJ", "TC", "CEL"];
+            const patentes = ["SGT", "SO", "CAP", "TEN", "MAJ", "TC", "CEL"];
 
             for (let i = 1; i < rows.length; i++) {
                 const c = rows[i];
-                if(c.length < 2) continue;
+                if (!c || c.length < 2) continue;
 
-                let respCol = c[0] ? c[0].trim().toUpperCase() : "";
+                let col0 = c[0] ? c[0].trim().toUpperCase() : "";
                 
-                // NOVA LÓGICA DE DETECÇÃO:
-                // Verifica se a primeira coluna começa com alguma das patentes da lista
-                const eNovoResponsavel = patentesPermitidas.some(p => respCol.startsWith(p + " "));
-
-                if (eNovoResponsavel) {
-                    currentResp = respCol;
+                // Verifica se é um novo responsável
+                const ehNovo = patentes.some(p => col0.startsWith(p + " "));
+                if (ehNovo) {
+                    currentResp = col0;
                 }
 
-                if (!currentResp || respCol === "TOTAL" || respCol.includes("SOMA")) continue;
+                // Pula linhas de total ou lixo
+                if (!currentResp || col0 === "TOTAL" || col0.includes("SOMA")) continue;
 
                 const empresa = c[1] ? c[1].trim() : "";
                 const empenho = c[2] ? c[2].trim() : "";
@@ -177,8 +175,9 @@
                 const ciente = c[5] ? c[5].trim() : "";
                 const status = c[6] ? c[6].trim() : "";
 
+                // IMPORTANTE: Use 'continue' em vez de 'return' para não travar o carregamento
                 if (empresa === "" && empenho === "" && saldoStr === "") continue;
-                if (empresa === "" && saldoStr !== "" && empenho === "") return;
+                if (empresa === "" && saldoStr !== "" && empenho === "") continue;
 
                 if (!responsaveis[currentResp]) {
                     responsaveis[currentResp] = { linhas: [], total: 0 };
@@ -195,25 +194,27 @@
             const nomes = Object.keys(responsaveis).sort();
             
             if (nomes.length > 0) {
-                const lastSelected = select.value;
+                const anterior = select.value;
                 select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
-                if (nomes.includes(lastSelected)) select.value = lastSelected;
+                if (nomes.includes(anterior)) select.value = anterior;
                 
                 updateUI();
                 document.getElementById('status').innerText = "● Sincronizado";
+            } else {
+                select.innerHTML = '<option>Nenhum dado encontrado</option>';
             }
         } catch (e) {
             console.error(e);
-            document.getElementById('status').innerText = "Erro ao carregar dados.";
+            document.getElementById('status').innerText = "Erro na conexão.";
         }
     }
 
     function updateUI() {
-        const selected = document.getElementById('repSelect').value;
-        const data = responsaveis[selected];
+        const sel = document.getElementById('repSelect').value;
+        const data = responsaveis[sel];
         if (!data) return;
 
-        document.getElementById('displayNome').innerText = `Saldo Total - ${selected}`;
+        document.getElementById('displayNome').innerText = `Saldo Total - ${sel}`;
         document.getElementById('totalGeral').innerText = formatarMoeda(data.total);
 
         const tbody = document.getElementById('tableBody');
@@ -229,8 +230,8 @@
         `).join('');
     }
 
-    setInterval(loadData, 120000);
     loadData();
+    setInterval(loadData, 120000);
 </script>
 </body>
 </html>
