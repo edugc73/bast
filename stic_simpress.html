@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Impressões - BAST</title>
+    <title>Dashboard Impressoras BAST</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -19,71 +19,47 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
         }
 
         .container { width: 100%; max-width: 1000px; }
-
         header { text-align: center; margin-bottom: 30px; }
-        h1 { color: var(--accent); font-weight: 300; letter-spacing: 2px; margin-bottom: 5px; }
-        .status { font-size: 0.8rem; color: var(--text-dim); }
+        h1 { color: var(--accent); font-weight: 300; letter-spacing: 2px; }
 
-        /* Filtro */
         .filter-box {
             background: var(--card-bg);
-            padding: 20px;
-            border-radius: 12px;
+            padding: 20px; border-radius: 12px;
             border: 1px solid var(--border);
-            text-align: center;
-            margin-bottom: 25px;
+            text-align: center; margin-bottom: 25px;
         }
 
         select {
-            background: #0a192f;
-            color: var(--accent);
+            background: #0a192f; color: var(--accent);
             border: 1px solid var(--accent);
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-size: 1rem;
-            width: 100%;
-            max-width: 300px;
-            outline: none;
-            cursor: pointer;
+            padding: 10px 20px; border-radius: 6px;
+            font-size: 1rem; width: 100%; max-width: 350px; outline: none;
         }
 
-        /* Cards de Informação */
         .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin-bottom: 30px;
         }
 
         .card {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
+            background: var(--card-bg); padding: 20px;
+            border-radius: 10px; border: 1px solid var(--border);
             text-align: center;
-            transition: 0.3s;
         }
 
-        .card:hover { border-color: var(--accent); }
         .card-label { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 10px; display: block; }
-        .card-value { font-size: 1.4rem; font-weight: bold; color: var(--text-main); }
-        .total-highlight { color: var(--accent); }
+        .card-value { font-size: 1.3rem; font-weight: bold; }
+        .accent-val { color: var(--accent); }
 
-        /* Gráfico */
         .chart-container {
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
+            background: var(--card-bg); padding: 20px;
+            border-radius: 12px; border: 1px solid var(--border);
             height: 400px;
         }
     </style>
@@ -92,171 +68,148 @@
 
 <div class="container">
     <header>
-        <h1>Monitoramento de Impressoras</h1>
-        <div id="status" class="status">Sincronizando dados...</div>
+        <h1>Consumo de Impressoras - BAST</h1>
+        <p id="status" style="font-size: 0.8rem; color: var(--text-dim);">Carregando dados da planilha...</p>
     </header>
 
     <div class="filter-box">
-        <label style="display:block; margin-bottom:10px; color:var(--text-dim)">SELECIONE A IMPRESSORA</label>
+        <label style="display:block; margin-bottom:10px; color:var(--text-dim)">SELECIONE A UNIDADE / IMPRESSORA</label>
         <select id="printerSelect" onchange="updateDashboard()">
-            <option value="">Carregando...</option>
+            <option value="">Carregando impressoras...</option>
         </select>
     </div>
 
     <div class="info-grid">
-        <div class="card">
-            <span class="card-label">Impressões (Total)</span>
-            <div id="valImpressoes" class="card-value">-</div>
-        </div>
-        <div class="card">
-            <span class="card-label">Valor Variável</span>
-            <div id="valValor" class="card-value">-</div>
-        </div>
-        <div class="card">
-            <span class="card-label">Valor Mensal (Fixo)</span>
-            <div id="valMensal" class="card-value">-</div>
-        </div>
-        <div class="card" style="border-bottom: 3px solid var(--accent)">
-            <span class="card-label">Total Geral</span>
-            <div id="valTotal" class="card-value total-highlight">-</div>
-        </div>
+        <div class="card"><span class="card-label">Total Impressões</span><div id="valImp" class="card-value">-</div></div>
+        <div class="card"><span class="card-label">Total Valor</span><div id="valVar" class="card-value">-</div></div>
+        <div class="card"><span class="card-label">Total Valor Mensal</span><div id="valFix" class="card-value">-</div></div>
+        <div class="card"><span class="card-label">Soma Total (Geral)</span><div id="valTotal" class="card-value accent-val">-</div></div>
     </div>
 
     <div class="chart-container">
-        <canvas id="impressionChart"></canvas>
+        <canvas id="mainChart"></canvas>
     </div>
 </div>
 
 <script>
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1699540465&single=true&output=csv';
     
-    let rawData = [];
-    let myChart = null;
+    let rows = [];
+    let printers = []; // Lista de objetos {nome: string, colIndex: number}
+    let chartInstance = null;
 
-    // Inicialização
-    window.onload = () => {
+    function carregarDados() {
         Papa.parse(csvUrl, {
             download: true,
-            header: true,
-            skipEmptyLines: true,
+            header: false, // Lemos como matriz para lidar com os cabeçalhos duplos
             complete: (results) => {
-                rawData = results.data;
-                initDropdown();
-                document.getElementById('status').innerText = "Dados atualizados via Google Sheets";
+                rows = results.data;
+                const headerRow = rows[1]; // Linha onde estão os nomes das impressoras (SEC COMANDO, etc)
+                
+                printers = [];
+                // As impressoras começam na coluna 1 (B) e pulam de 4 em 4
+                for(let i = 1; i < headerRow.length; i += 4) {
+                    if(headerRow[i] && headerRow[i].trim() !== "") {
+                        printers.push({ nome: headerRow[i].trim(), index: i });
+                    }
+                }
+
+                popularDropdown();
+                document.getElementById('status').innerText = "Dados Sincronizados";
             }
         });
-    };
+    }
 
-    function initDropdown() {
+    function popularDropdown() {
         const select = document.getElementById('printerSelect');
-        // Pega o nome da coluna de impressoras (ajuste o nome se for diferente na planilha)
-        const printerCol = Object.keys(rawData[0])[0]; 
-        const printers = [...new Set(rawData.map(item => item[printerCol]))].filter(p => p).sort();
-
-        select.innerHTML = '<option value="">-- Escolha uma impressora --</option>';
-        printers.forEach(p => {
-            let opt = document.createElement('option');
-            opt.value = p;
-            opt.textContent = p;
+        select.innerHTML = '<option value="">-- Escolha uma Impressora --</option>';
+        printers.forEach((p, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = p.nome;
             select.appendChild(opt);
         });
     }
 
     function updateDashboard() {
-        const selected = document.getElementById('printerSelect').value;
-        if (!selected) return;
+        const printerIdx = document.getElementById('printerSelect').value;
+        if(printerIdx === "") return;
 
-        // Filtra os dados da impressora selecionada
-        const printerCol = Object.keys(rawData[0])[0];
-        const data = rawData.filter(item => item[printerCol] === selected);
+        const selectedPrinter = printers[printerIdx];
+        const colStart = selectedPrinter.index;
 
-        // Cálculos
-        let totalImpressoes = 0;
-        let totalValor = 0;
-        let totalMensal = 0;
+        let totalImp = 0;
+        let totalVar = 0;
+        let totalFix = 0;
+        
+        let labels = [];
+        let dataImp = [];
 
-        // Mapeamento para o gráfico (Assumindo que existe uma coluna 'MES' ou 'MÊS')
-        const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        const valuesByMonth = new Array(12).fill(0);
+        // Dados começam na linha 3 (Janeiro)
+        for(let i = 3; i < rows.length; i++) {
+            const row = rows[i];
+            if(!row[0]) continue; // Pula linhas vazias
 
-        data.forEach(item => {
-            // Soma valores numéricos (removendo R$ e trocando vírgula por ponto)
-            const imp = parseInt(item['IMPRESSÕES']) || 0;
-            const vVar = parseMoeda(item['VALOR']);
-            const vFix = parseMoeda(item['VALOR MENSAL']);
+            const mes = row[0];
+            const imp = parseInt(row[colStart]) || 0;
+            const vVar = parseCurrency(row[colStart + 1]);
+            const vFix = parseCurrency(row[colStart + 2]);
 
-            totalImpressoes += imp;
-            totalValor += vVar;
-            totalMensal += vFix;
+            labels.push(mes);
+            dataImp.push(imp);
 
-            // Lógica do gráfico (Tenta achar o mês)
-            // Se a planilha tiver uma linha por mês, mapeamos aqui:
-            const mesIdx = indexDoMes(item['MÊS'] || item['MES']);
-            if(mesIdx !== -1) valuesByMonth[mesIdx] += imp;
-        });
+            totalImp += imp;
+            totalVar += vVar;
+            totalFix += vFix;
+        }
 
-        // Atualiza Cards
-        document.getElementById('valImpressoes').innerText = totalImpressoes.toLocaleString('pt-BR');
-        document.getElementById('valValor').innerText = formatMoeda(totalValor);
-        document.getElementById('valMensal').innerText = formatMoeda(totalMensal);
-        document.getElementById('valTotal').innerText = formatMoeda(totalValor + totalMensal);
+        // Atualizar Cards
+        document.getElementById('valImp').innerText = totalImp.toLocaleString('pt-BR');
+        document.getElementById('valVar').innerText = formatCurrency(totalVar);
+        document.getElementById('valFix').innerText = formatCurrency(totalFix);
+        document.getElementById('valTotal').innerText = formatCurrency(totalVar + totalFix);
 
-        renderChart(labels, valuesByMonth);
+        renderChart(labels, dataImp);
     }
 
-    function parseMoeda(val) {
-        if (!val) return 0;
-        return parseFloat(val.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
+    function parseCurrency(val) {
+        if(!val) return 0;
+        // Remove R$, pontos de milhar e troca vírgula por ponto
+        return parseFloat(val.toString().replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
     }
 
-    function formatMoeda(val) {
+    function formatCurrency(val) {
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    function indexDoMes(mes) {
-        if(!mes) return -1;
-        const meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-        const m = mes.toLowerCase().trim();
-        return meses.findIndex(item => m.includes(item) || item.includes(m));
-    }
+    function renderChart(labels, data) {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        if(chartInstance) chartInstance.destroy();
 
-    function renderChart(labels, dataValues) {
-        const ctx = document.getElementById('impressionChart').getContext('2d');
-        
-        if (myChart) myChart.destroy();
-
-        myChart = new Chart(ctx, {
+        chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Volume de Impressões',
-                    data: dataValues,
+                    label: 'Impressões por Mês',
+                    data: data,
                     backgroundColor: '#64ffda',
-                    borderRadius: 5,
+                    borderRadius: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        grid: { color: '#233554' },
-                        ticks: { color: '#8892b0' }
-                    },
-                    x: { 
-                        grid: { display: false },
-                        ticks: { color: '#8892b0' }
-                    }
+                    y: { beginAtZero: true, grid: { color: '#233554' }, ticks: { color: '#8892b0' } },
+                    x: { grid: { display: false }, ticks: { color: '#8892b0' } }
                 },
-                plugins: {
-                    legend: { display: false }
-                }
+                plugins: { legend: { display: false } }
             }
         });
     }
-</script>
 
+    carregarDados();
+</script>
 </body>
 </html>
