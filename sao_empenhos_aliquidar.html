@@ -104,10 +104,12 @@
 </div>
 
 <script>
+    // URL da sua planilha fornecida
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=87175636&single=true&output=csv'; 
     
     let responsaveis = {};
 
+    // Função para limpar valores monetários da planilha
     function parseValue(v) {
         if (!v || v.trim() === "") return 0;
         let text = v.toString().replace(/"/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
@@ -117,7 +119,8 @@
 
     const formatarMoeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    function parseCSV(text) {
+    // Função essencial para ler o CSV do Google sem erros de quebra de linha
+    function robustCSVParse(text) {
         const rows = [];
         let currField = "";
         let currRow = [];
@@ -144,73 +147,76 @@
 
     async function loadData() {
         try {
-            const response = await fetch(SHEET_URL);
+            // Adicionamos um carimbo de tempo para evitar que o navegador use dados antigos (cache)
+            const response = await fetch(SHEET_URL + '&t=' + new Date().getTime());
             const csvText = await response.text();
-            const rows = parseCSV(csvText);
+            const rows = robustCSVParse(csvText);
             
             responsaveis = {};
-            let currentCursor = "";
+            let currentResp = "";
 
-            rows.forEach((cols, idx) => {
-                if (idx === 0) return;
+            // Começa do 1 para pular o cabeçalho
+            for (let i = 1; i < rows.length; i++) {
+                const c = rows[i];
+                if(c.length < 2) continue;
 
-                let col0 = cols[0] ? cols[0].trim().toUpperCase() : "";
+                let respCol = c[0] ? c[0].trim().toUpperCase() : "";
                 
-                // DETECÇÃO AUTOMÁTICA: Se a célula começar com CAP ou TEN, é um novo responsável
-                // Isso permite que você adicione novos nomes sem mexer no código
-                if (col0.startsWith("CAP ") || col0.startsWith("TEN ")) {
-                    currentCursor = col0;
+                // Se encontrar CAP ou TEN, troca o responsável atual
+                if (respCol.startsWith("CAP ") || respCol.startsWith("TEN ")) {
+                    currentResp = respCol;
                 }
 
-                // Se a linha for de TOTAL ou estiver vazia antes de encontrar um oficial, ignora
-                if (!currentCursor || col0 === "TOTAL" || col0.includes("SOMA")) return;
+                // Pula linhas de totalização da planilha
+                if (!currentResp || respCol === "TOTAL" || respCol.includes("SOMA")) continue;
 
-                const empresa = cols[1] ? cols[1].trim() : "";
-                const empenho = cols[2] ? cols[2].trim() : "";
-                const saldoStr = cols[3] ? cols[3].trim() : "";
-                const termo = cols[4] ? cols[4].trim() : "";
-                const ciente = cols[5] ? cols[5].trim() : "";
-                const status = cols[6] ? cols[6].trim() : "";
+                const empresa = c[1] ? c[1].trim() : "";
+                const empenho = c[2] ? c[2].trim() : "";
+                const saldoStr = c[3] ? c[3].trim() : "";
+                const termo = c[4] ? c[4].trim() : "";
+                const ciente = c[5] ? c[5].trim() : "";
+                const status = c[6] ? c[6].trim() : "";
 
-                // Só processa se houver saldo, empresa ou empenho para evitar lixo
-                if (empresa === "" && empenho === "" && saldoStr === "") return;
-                
-                // Ignora linhas de soma parcial da planilha (Saldo preenchido mas Empresa vazia)
-                if (empresa === "" && saldoStr !== "" && empenho === "") return;
+                // Só adiciona se houver dado útil na linha
+                if (empresa === "" && empenho === "" && saldoStr === "") continue;
+                // Filtra linhas que são apenas somas parciais
+                if (empresa === "" && saldoStr !== "" && empenho === "") continue;
 
-                if (!responsaveis[currentCursor]) {
-                    responsaveis[currentCursor] = { linhas: [], total: 0 };
+                if (!responsaveis[currentResp]) {
+                    responsaveis[currentResp] = { linhas: [], total: 0 };
                 }
                 
                 const saldoNum = parseValue(saldoStr);
-                responsaveis[currentCursor].linhas.push({
+                responsaveis[currentCursor = currentResp].linhas.push({
                     empresa, empenho, saldo: saldoNum, termo, ciente, status
                 });
-                responsaveis[currentCursor].total += saldoNum;
-            });
+                responsaveis[currentResp].total += saldoNum;
+            }
 
             const select = document.getElementById('repSelect');
             const nomes = Object.keys(responsaveis).sort();
             
             if (nomes.length > 0) {
+                // Preserva a seleção atual se possível
+                const lastSelected = select.value;
                 select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
+                if (nomes.includes(lastSelected)) select.value = lastSelected;
+                
                 updateUI();
-            } else {
-                select.innerHTML = '<option>Nenhum responsável encontrado</option>';
+                document.getElementById('status').innerText = "● Sincronizado";
             }
-
-            document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro na sincronização.";
+            console.error(e);
+            document.getElementById('status').innerText = "Erro ao carregar dados.";
         }
     }
 
     function updateUI() {
-        const sel = document.getElementById('repSelect').value;
-        const data = responsaveis[sel];
+        const selected = document.getElementById('repSelect').value;
+        const data = responsaveis[selected];
         if (!data) return;
 
-        document.getElementById('displayNome').innerText = `Saldo Total - ${sel}`;
+        document.getElementById('displayNome').innerText = `Saldo Total - ${selected}`;
         document.getElementById('totalGeral').innerText = formatarMoeda(data.total);
 
         const tbody = document.getElementById('tableBody');
@@ -226,6 +232,8 @@
         `).join('');
     }
 
+    // Atualiza a cada 2 minutos automaticamente
+    setInterval(loadData, 120000);
     loadData();
 </script>
 </body>
