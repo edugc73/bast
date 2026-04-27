@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Saldos - SAO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #050a1a;
+            --bg-card: rgba(13, 27, 53, 0.95);
+            --accent: #00d2ff;
+            --text: #ffffff;
+            --meta: #8892b0;
+            --bast: #00ff88;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            margin: 0; padding: 20px;
+            background: radial-gradient(circle at top right, #0a1f44, #050a1a);
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 25px; background: var(--bg-card); border-radius: 15px;
+            margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .img-logo { height: 50px; width: auto; }
+        
+        select {
+            background: #1a2a4a; color: white; border: 1px solid var(--accent);
+            padding: 10px 20px; border-radius: 8px; outline: none; cursor: pointer; font-family: 'Poppins';
+            font-size: 0.9rem;
+        }
+
+        .summary-card {
+            background: var(--bg-card); padding: 20px; border-radius: 15px;
+            border: 1px solid rgba(0, 210, 255, 0.2); text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .summary-card h2 { font-size: 0.8rem; color: var(--meta); text-transform: uppercase; margin: 0; }
+        .summary-card p { font-size: 2.2rem; font-weight: 600; margin: 5px 0; color: var(--bast); }
+
+        .content-area {
+            background: var(--bg-card); padding: 15px; border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;
+        }
+
+        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        th { text-align: left; color: var(--accent); padding: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); font-size: 0.75rem; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; vertical-align: top; line-height: 1.5; }
+        
+        tr:hover { background: rgba(255,255,255,0.03); }
+        .val-num { font-weight: 600; color: var(--bast); white-space: nowrap; }
+        .status-cell { color: #cbd5e1; max-width: 300px; font-size: 0.75rem; white-space: pre-line; }
+        .empresa-cell { font-weight: 600; color: #fff; max-width: 250px; }
+
+        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container" translate="no">
+    <header>
+        <div class="logo-area">
+            <img src="dom.gif" alt="Logo" class="img-logo">
+            <span style="font-weight: 600; color: var(--accent);">GESTOR DE EMPENHOS - SAO</span>
+        </div>
+        <select id="repSelect" onchange="updateUI()">
+            <option value="">Carregando dados...</option>
+        </select>
+    </header>
+
+    <div class="summary-card">
+        <h2 id="displayNome">Saldo Total Disponível</h2>
+        <p id="totalGeral">R$ 0,00</p>
+    </div>
+
+    <div class="content-area">
+        <table>
+            <thead>
+                <tr>
+                    <th>Empresa / OBJ</th>
+                    <th>Empenho</th>
+                    <th>Saldo</th>
+                    <th>Termo Ref</th>
+                    <th>Ciente</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div id="status">Sincronizando...</div>
+</div>
+
+<script>
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1042545153&single=true&output=csv'; 
+    
+    let responsaveis = {};
+    let ordemOriginal = []; // Nova variável para guardar a ordem da planilha
+
+    function parseValue(v) {
+        if (!v || v.trim() === "") return 0;
+        let text = v.toString().replace(/"/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+        let num = parseFloat(text);
+        return isNaN(num) ? 0 : num;
+    }
+
+    const formatarMoeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    function robustCSVParse(text) {
+        const rows = [];
+        let currField = "";
+        let currRow = [];
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            let char = text[i];
+            let next = text[i+1];
+
+            if (char === '"' && inQuotes && next === '"') { currField += '"'; i++; }
+            else if (char === '"') { inQuotes = !inQuotes; }
+            else if (char === ',' && !inQuotes) { currRow.push(currField); currField = ""; }
+            else if ((char === '\n' || char === '\r') && !inQuotes) {
+                if (currField || currRow.length > 0) {
+                    currRow.push(currField);
+                    rows.push(currRow);
+                    currField = ""; currRow = [];
+                }
+            } else { currField += char; }
+        }
+        if (currField || currRow.length > 0) { currRow.push(currField); rows.push(currRow); }
+        return rows;
+    }
+
+    async function loadData() {
+        try {
+            const response = await fetch(SHEET_URL + '&t=' + new Date().getTime());
+            const csvText = await response.text();
+            const rows = robustCSVParse(csvText);
+            
+            responsaveis = {};
+            ordemOriginal = []; // Reseta a ordem ao carregar
+            let currentResp = "";
+
+            const patentes = ["SGT", "SO", "CAP", "TEN", "MAJ", "TC", "CEL"];
+
+            for (let i = 1; i < rows.length; i++) {
+                const c = rows[i];
+                if (!c || c.length < 2) continue;
+
+                let col0 = c[0] ? c[0].trim().toUpperCase() : "";
+                
+                const ehNovo = patentes.some(p => col0.startsWith(p + " "));
+                if (ehNovo) {
+                    currentResp = col0;
+                    // Adiciona na lista de ordem apenas se o nome ainda não estiver lá
+                    if (!ordemOriginal.includes(currentResp)) {
+                        ordemOriginal.push(currentResp);
+                    }
+                }
+
+                if (!currentResp || col0 === "TOTAL" || col0.includes("SOMA")) continue;
+
+                const empresa = c[1] ? c[1].trim() : "";
+                const empenho = c[2] ? c[2].trim() : "";
+                const saldoStr = c[3] ? c[3].trim() : "";
+                const termo = c[4] ? c[4].trim() : "";
+                const ciente = c[5] ? c[5].trim() : "";
+                const status = c[6] ? c[6].trim() : "";
+
+                if (empresa === "" && empenho === "" && saldoStr === "") continue;
+                if (empresa === "" && saldoStr !== "" && empenho === "") continue;
+
+                if (!responsaveis[currentResp]) {
+                    responsaveis[currentResp] = { linhas: [], total: 0 };
+                }
+                
+                const saldoNum = parseValue(saldoStr);
+                responsaveis[currentResp].linhas.push({
+                    empresa, empenho, saldo: saldoNum, termo, ciente, status
+                });
+                responsaveis[currentResp].total += saldoNum;
+            }
+
+            const select = document.getElementById('repSelect');
+            
+            // Aqui usamos a ordemOriginal em vez de Object.keys().sort()
+            if (ordemOriginal.length > 0) {
+                const anterior = select.value;
+                select.innerHTML = ordemOriginal.map(n => `<option value="${n}">${n}</option>`).join('');
+                
+                // Tenta manter o oficial selecionado após a atualização
+                if (ordemOriginal.includes(anterior)) {
+                    select.value = anterior;
+                }
+                
+                updateUI();
+                document.getElementById('status').innerText = "● Sincronizado";
+            } else {
+                select.innerHTML = '<option>Nenhum dado encontrado</option>';
+            }
+        } catch (e) {
+            console.error(e);
+            document.getElementById('status').innerText = "Erro na conexão.";
+        }
+    }
+
+    function updateUI() {
+        const sel = document.getElementById('repSelect').value;
+        const data = responsaveis[sel];
+        if (!data) return;
+
+        document.getElementById('displayNome').innerText = `Saldo Total - ${sel}`;
+        document.getElementById('totalGeral').innerText = formatarMoeda(data.total);
+
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = data.linhas.map(l => `
+            <tr>
+                <td class="empresa-cell">${l.empresa}</td>
+                <td style="color:var(--accent)">${l.empenho}</td>
+                <td class="val-num">${formatarMoeda(l.saldo)}</td>
+                <td>${l.termo}</td>
+                <td>${l.ciente}</td>
+                <td class="status-cell">${l.status}</td>
+            </tr>
+        `).join('');
+    }
+
+    loadData();
+    setInterval(loadData, 120000);
+</script>
+</body>
+</html>
