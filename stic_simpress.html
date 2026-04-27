@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Impressoras BAST</title>
+    <title>Dashboard Impressoras BAST - Mensal</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -28,18 +28,24 @@
         header { text-align: center; margin-bottom: 30px; }
         h1 { color: var(--accent); font-weight: 300; letter-spacing: 2px; }
 
-        .filter-box {
+        .filter-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
             background: var(--card-bg);
             padding: 20px; border-radius: 12px;
             border: 1px solid var(--border);
-            text-align: center; margin-bottom: 25px;
+            margin-bottom: 25px;
         }
+
+        .filter-group { display: flex; flex-direction: column; align-items: center; }
 
         select {
             background: #0a192f; color: var(--accent);
             border: 1px solid var(--accent);
-            padding: 10px 20px; border-radius: 6px;
-            font-size: 1rem; width: 100%; max-width: 350px; outline: none;
+            padding: 10px 15px; border-radius: 6px;
+            font-size: 1rem; width: 100%; outline: none;
+            cursor: pointer;
         }
 
         .info-grid {
@@ -60,7 +66,7 @@
         .chart-container {
             background: var(--card-bg); padding: 20px;
             border-radius: 12px; border: 1px solid var(--border);
-            height: 400px;
+            height: 350px;
         }
     </style>
 </head>
@@ -69,21 +75,28 @@
 <div class="container">
     <header>
         <h1>Consumo de Impressoras - BAST</h1>
-        <p id="status" style="font-size: 0.8rem; color: var(--text-dim);">Carregando dados da planilha...</p>
+        <p id="status" style="font-size: 0.8rem; color: var(--text-dim);">Conectando à planilha...</p>
     </header>
 
-    <div class="filter-box">
-        <label style="display:block; margin-bottom:10px; color:var(--text-dim)">SELECIONE A UNIDADE / IMPRESSORA</label>
-        <select id="printerSelect" onchange="updateDashboard()">
-            <option value="">Carregando impressoras...</option>
-        </select>
+    <div class="filter-container">
+        <div class="filter-group">
+            <label style="margin-bottom:8px; color:var(--text-dim); font-size:0.8rem;">1. SELECIONE A IMPRESSORA</label>
+            <select id="printerSelect" onchange="updateDashboard()">
+                <option value="">Carregando...</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label style="margin-bottom:8px; color:var(--text-dim); font-size:0.8rem;">2. SELECIONE O MÊS</label>
+            <select id="monthSelect" onchange="updateDashboard()">
+                </select>
+        </div>
     </div>
 
     <div class="info-grid">
-        <div class="card"><span class="card-label">Total Impressões</span><div id="valImp" class="card-value">-</div></div>
-        <div class="card"><span class="card-label">Total Valor</span><div id="valVar" class="card-value">-</div></div>
-        <div class="card"><span class="card-label">Total Valor Mensal</span><div id="valFix" class="card-value">-</div></div>
-        <div class="card"><span class="card-label">Soma Total (Geral)</span><div id="valTotal" class="card-value accent-val">-</div></div>
+        <div class="card"><span class="card-label">Impressões no Mês</span><div id="valImp" class="card-value">-</div></div>
+        <div class="card"><span class="card-label">Valor Variável</span><div id="valVar" class="card-value">-</div></div>
+        <div class="card"><span class="card-label">Valor Mensal (Fixo)</span><div id="valFix" class="card-value">-</div></div>
+        <div class="card"><span class="card-label">Total do Mês</span><div id="valTotal" class="card-value accent-val">-</div></div>
     </div>
 
     <div class="chart-container">
@@ -95,86 +108,101 @@
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1699540465&single=true&output=csv';
     
     let rows = [];
-    let printers = []; // Lista de objetos {nome: string, colIndex: number}
+    let printers = [];
+    let months = [];
     let chartInstance = null;
 
     function carregarDados() {
         Papa.parse(csvUrl, {
             download: true,
-            header: false, // Lemos como matriz para lidar com os cabeçalhos duplos
+            header: false,
             complete: (results) => {
                 rows = results.data;
-                const headerRow = rows[1]; // Linha onde estão os nomes das impressoras (SEC COMANDO, etc)
                 
+                // Mapeia Impressoras (Linha 1 da planilha)
+                const headerRow = rows[1];
                 printers = [];
-                // As impressoras começam na coluna 1 (B) e pulam de 4 em 4
                 for(let i = 1; i < headerRow.length; i += 4) {
                     if(headerRow[i] && headerRow[i].trim() !== "") {
                         printers.push({ nome: headerRow[i].trim(), index: i });
                     }
                 }
 
-                popularDropdown();
+                // Mapeia Meses (Coluna 0, a partir da linha 3)
+                months = [];
+                for(let i = 3; i < rows.length; i++) {
+                    if(rows[i][0]) months.push(rows[i][0]);
+                }
+
+                popularDropdowns();
                 document.getElementById('status').innerText = "Dados Sincronizados";
             }
         });
     }
 
-    function popularDropdown() {
-        const select = document.getElementById('printerSelect');
-        select.innerHTML = '<option value="">-- Escolha uma Impressora --</option>';
+    function popularDropdowns() {
+        const pSelect = document.getElementById('printerSelect');
+        pSelect.innerHTML = '<option value="">-- Escolha --</option>';
         printers.forEach((p, idx) => {
             const opt = document.createElement('option');
             opt.value = idx;
             opt.textContent = p.nome;
-            select.appendChild(opt);
+            pSelect.appendChild(opt);
+        });
+
+        const mSelect = document.getElementById('monthSelect');
+        mSelect.innerHTML = '';
+        months.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            // Define o mês atual como padrão se quiser (opcional)
+            mSelect.appendChild(opt);
         });
     }
 
     function updateDashboard() {
         const printerIdx = document.getElementById('printerSelect').value;
+        const selectedMonth = document.getElementById('monthSelect').value;
+        
         if(printerIdx === "") return;
 
         const selectedPrinter = printers[printerIdx];
         const colStart = selectedPrinter.index;
 
-        let totalImp = 0;
-        let totalVar = 0;
-        let totalFix = 0;
-        
-        let labels = [];
-        let dataImp = [];
+        let monthlyImp = 0, monthlyVar = 0, monthlyFix = 0, monthlyTotal = 0;
+        let chartLabels = [], chartData = [];
 
-        // Dados começam na linha 3 (Janeiro)
+        // Percorre as linhas para preencher o gráfico e pegar o mês selecionado
         for(let i = 3; i < rows.length; i++) {
             const row = rows[i];
-            if(!row[0]) continue; // Pula linhas vazias
-
             const mes = row[0];
+            if(!mes) continue;
+
             const imp = parseInt(row[colStart]) || 0;
-            const vVar = parseCurrency(row[colStart + 1]);
-            const vFix = parseCurrency(row[colStart + 2]);
+            chartLabels.push(mes);
+            chartData.push(imp);
 
-            labels.push(mes);
-            dataImp.push(imp);
-
-            totalImp += imp;
-            totalVar += vVar;
-            totalFix += vFix;
+            // Se for o mês selecionado, guarda os valores para os cards
+            if(mes === selectedMonth) {
+                monthlyImp = imp;
+                monthlyVar = parseCurrency(row[colStart + 1]);
+                monthlyFix = parseCurrency(row[colStart + 2]);
+                monthlyTotal = monthlyVar + monthlyFix;
+            }
         }
 
-        // Atualizar Cards
-        document.getElementById('valImp').innerText = totalImp.toLocaleString('pt-BR');
-        document.getElementById('valVar').innerText = formatCurrency(totalVar);
-        document.getElementById('valFix').innerText = formatCurrency(totalFix);
-        document.getElementById('valTotal').innerText = formatCurrency(totalVar + totalFix);
+        // Atualizar Cards com dados do Mês
+        document.getElementById('valImp').innerText = monthlyImp.toLocaleString('pt-BR');
+        document.getElementById('valVar').innerText = formatCurrency(monthlyVar);
+        document.getElementById('valFix').innerText = formatCurrency(monthlyFix);
+        document.getElementById('valTotal').innerText = formatCurrency(monthlyTotal);
 
-        renderChart(labels, dataImp);
+        renderChart(chartLabels, chartData, selectedMonth);
     }
 
     function parseCurrency(val) {
         if(!val) return 0;
-        // Remove R$, pontos de milhar e troca vírgula por ponto
         return parseFloat(val.toString().replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
     }
 
@@ -182,18 +210,21 @@
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    function renderChart(labels, data) {
+    function renderChart(labels, data, highlightedMonth) {
         const ctx = document.getElementById('mainChart').getContext('2d');
         if(chartInstance) chartInstance.destroy();
+
+        // Cria cores: a barra do mês selecionado fica mais brilhante
+        const backgroundColors = labels.map(m => m === highlightedMonth ? '#64ffda' : 'rgba(100, 255, 218, 0.2)');
 
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Impressões por Mês',
+                    label: 'Impressões',
                     data: data,
-                    backgroundColor: '#64ffda',
+                    backgroundColor: backgroundColors,
                     borderRadius: 4
                 }]
             },
