@@ -107,6 +107,7 @@
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=87175636&single=true&output=csv'; 
     
     let responsaveis = {};
+    let ordemOriginal = []; // Nova variável para guardar a ordem da planilha
 
     function parseValue(v) {
         if (!v || v.trim() === "") return 0;
@@ -149,6 +150,7 @@
             const rows = robustCSVParse(csvText);
             
             responsaveis = {};
+            ordemOriginal = []; // Reseta a ordem ao carregar
             let currentResp = "";
 
             const patentes = ["SGT", "SO", "CAP", "TEN", "MAJ", "TC", "CEL"];
@@ -159,13 +161,15 @@
 
                 let col0 = c[0] ? c[0].trim().toUpperCase() : "";
                 
-                // Verifica se é um novo responsável
                 const ehNovo = patentes.some(p => col0.startsWith(p + " "));
                 if (ehNovo) {
                     currentResp = col0;
+                    // Adiciona na lista de ordem apenas se o nome ainda não estiver lá
+                    if (!ordemOriginal.includes(currentResp)) {
+                        ordemOriginal.push(currentResp);
+                    }
                 }
 
-                // Pula linhas de total ou lixo
                 if (!currentResp || col0 === "TOTAL" || col0.includes("SOMA")) continue;
 
                 const empresa = c[1] ? c[1].trim() : "";
@@ -175,7 +179,6 @@
                 const ciente = c[5] ? c[5].trim() : "";
                 const status = c[6] ? c[6].trim() : "";
 
-                // IMPORTANTE: Use 'continue' em vez de 'return' para não travar o carregamento
                 if (empresa === "" && empenho === "" && saldoStr === "") continue;
                 if (empresa === "" && saldoStr !== "" && empenho === "") continue;
 
@@ -191,12 +194,16 @@
             }
 
             const select = document.getElementById('repSelect');
-            const nomes = Object.keys(responsaveis).sort();
             
-            if (nomes.length > 0) {
+            // Aqui usamos a ordemOriginal em vez de Object.keys().sort()
+            if (ordemOriginal.length > 0) {
                 const anterior = select.value;
-                select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
-                if (nomes.includes(anterior)) select.value = anterior;
+                select.innerHTML = ordemOriginal.map(n => `<option value="${n}">${n}</option>`).join('');
+                
+                // Tenta manter o oficial selecionado após a atualização
+                if (ordemOriginal.includes(anterior)) {
+                    select.value = anterior;
+                }
                 
                 updateUI();
                 document.getElementById('status').innerText = "● Sincronizado";
