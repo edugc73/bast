@@ -59,7 +59,7 @@
         
         tr:hover { background: rgba(255,255,255,0.03); }
         .val-num { font-weight: 600; color: var(--bast); white-space: nowrap; }
-        .status-cell { font-size: 0.75rem; color: var(--meta); max-width: 250px; }
+        .status-cell { font-size: 0.75rem; color: var(--meta); max-width: 300px; white-space: pre-line; }
 
         #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
     </style>
@@ -73,7 +73,7 @@
             <span style="font-weight: 600; color: var(--accent);">GESTOR DE EMPENHOS - SAO</span>
         </div>
         <select id="repSelect" onchange="updateUI()">
-            <option value="">Carregando responsáveis...</option>
+            <option value="">Aguarde...</option>
         </select>
     </header>
 
@@ -115,38 +115,64 @@
 
     const formatarMoeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+    // FUNÇÃO CRÍTICA: Processa o CSV respeitando aspas e ignorando quebras de linha dentro delas
+    function robustCSVParse(text) {
+        const rows = [];
+        let currField = "";
+        let currRow = [];
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            let char = text[i];
+            let next = text[i+1];
+
+            if (char === '"' && inQuotes && next === '"') { currField += '"'; i++; }
+            else if (char === '"') { inQuotes = !inQuotes; }
+            else if (char === ',' && !inQuotes) { currRow.push(currField); currField = ""; }
+            else if ((char === '\n' || char === '\r') && !inQuotes) {
+                if (currField || currRow.length > 0) {
+                    currRow.push(currField);
+                    rows.push(currRow);
+                    currField = ""; currRow = [];
+                }
+            } else { currField += char; }
+        }
+        if (currField || currRow.length > 0) { currRow.push(currField); rows.push(currRow); }
+        return rows;
+    }
+
     async function loadData() {
         try {
             const response = await fetch(SHEET_URL);
             const csvText = await response.text();
-            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
+            const rows = robustCSVParse(csvText);
             
             responsaveis = {};
             let currentResp = "";
 
-            for (let i = 1; i < lines.length; i++) {
-                // Regex para lidar com vírgulas dentro de aspas (comum na coluna Status)
-                const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            // Começa do idx 1 para pular cabeçalho
+            for (let i = 1; i < rows.length; i++) {
+                const c = rows[i];
                 if(c.length < 2) continue;
 
-                let respCol = c[0].replace(/"/g, '').trim();
+                let respCol = c[0].trim().toUpperCase();
                 
-                // Se a coluna de responsável tiver nome, atualiza o atual. Se não, continua no anterior (agrupamento)
-                if (respCol !== "" && respCol !== "TOTAL") {
+                // REGRA: Só muda o responsável se a célula começar com as patentes corretas
+                if (respCol.startsWith("CAP ") || respCol.startsWith("TEN ")) {
                     currentResp = respCol;
                 }
 
-                if (!currentResp || respCol === "TOTAL") continue;
+                // Ignora se não tiver responsável ou se for linha de TOTAL/SOMA
+                if (!currentResp || respCol === "TOTAL" || respCol.includes("SOMA")) continue;
 
-                const empresa = c[1] ? c[1].replace(/"/g, '').trim() : "";
-                const empenho = c[2] ? c[2].replace(/"/g, '').trim() : "";
-                const saldoStr = c[3] ? c[3].replace(/"/g, '').trim() : "";
-                const termo = c[4] ? c[4].replace(/"/g, '').trim() : "";
-                const ciente = c[5] ? c[5].replace(/"/g, '').trim() : "";
-                const status = c[6] ? c[6].replace(/"/g, '').trim() : "";
+                const empresa = c[1] ? c[1].trim() : "";
+                const empenho = c[2] ? c[2].trim() : "";
+                const saldoStr = c[3] ? c[3].trim() : "";
+                const termo = c[4] ? c[4].trim() : "";
+                const ciente = c[5] ? c[5].trim() : "";
+                const status = c[6] ? c[6].trim() : "";
 
-                // Ignora linhas que são apenas somas parciais (geralmente têm saldo mas não empresa)
-                if (empresa === "" && saldoStr !== "") continue;
+                // Só adiciona se houver empresa ou empenho real na linha
                 if (empresa === "" && empenho === "") continue;
 
                 if (!responsaveis[currentResp]) {
@@ -165,17 +191,15 @@
             select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
 
             updateUI();
-            document.getElementById('status').innerText = "● Sincronizado com a Planilha";
+            document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
-            console.error(e);
-            document.getElementById('status').innerText = "Erro ao ler a planilha.";
+            document.getElementById('status').innerText = "Erro ao carregar planilha.";
         }
     }
 
     function updateUI() {
         const selected = document.getElementById('repSelect').value;
         const data = responsaveis[selected];
-        
         if (!data) return;
 
         document.getElementById('displayNome').innerText = `Saldo Total - ${selected}`;
