@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Dinâmico - Gestão de Contratos</title>
+    <title>Dashboard BAST - Gestão de Contratos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         :root {
             --bg-color: #0a192f;
@@ -17,7 +18,7 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 40px 20px;
             display: flex;
@@ -27,7 +28,7 @@
 
         .container {
             width: 100%;
-            max-width: 1100px;
+            max-width: 900px;
         }
 
         header {
@@ -37,48 +38,45 @@
 
         h1 {
             font-size: 1.8rem;
-            font-weight: 400;
-            letter-spacing: 1px;
             color: var(--accent);
-            margin-bottom: 10px;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
-        .status-sync {
-            font-size: 0.8rem;
-            color: var(--text-dim);
-        }
-
-        /* Seletor do Gestor */
         .filter-section {
             background: var(--card-bg);
-            padding: 30px;
+            padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(2, 12, 27, 0.5);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 30px;
             border: 1px solid var(--border);
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(2, 12, 27, 0.5);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 15px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            letter-spacing: 1px;
         }
 
         select {
-            background: var(--bg-color);
+            background: #0a192f;
             color: var(--accent);
             border: 1px solid var(--accent);
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-size: 1rem;
+            padding: 12px 20px;
+            border-radius: 5px;
             width: 100%;
-            max-width: 400px;
-            cursor: pointer;
+            max-width: 350px;
+            font-size: 1rem;
             outline: none;
         }
 
-        /* Resultados */
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        .results-area {
+            display: flex;
+            flex-direction: column;
             gap: 20px;
         }
 
@@ -86,167 +84,158 @@
             background: var(--card-bg);
             border: 1px solid var(--border);
             padding: 25px;
-            border-radius: 10px;
-            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            border-left: 5px solid var(--accent);
+            animation: fadeIn 0.5s ease-in;
         }
 
-        .field {
-            margin-bottom: 15px;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 8px;
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(35, 53, 84, 0.5);
         }
 
-        .label {
-            display: block;
-            font-size: 0.7rem;
+        .data-row:last-child { border-bottom: none; }
+
+        .label-text {
             color: var(--text-dim);
+            font-size: 0.8rem;
             text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-
-        .value {
-            font-size: 0.95rem;
-            line-height: 1.4;
-        }
-
-        .value.highlight {
-            color: var(--accent);
             font-weight: bold;
         }
 
-        .loading {
-            color: var(--accent);
-            font-style: italic;
+        .value-text {
+            color: var(--text-main);
+            font-size: 1rem;
+            text-align: right;
+            max-width: 60%;
         }
+
+        .empresa-title {
+            color: var(--accent);
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--accent);
+            padding-bottom: 10px;
+            font-weight: bold;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .loading-msg { color: var(--accent); font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Painel de Controle de Contratos</h1>
-        <div id="syncStatus" class="status-sync">Conectando à planilha Google...</div>
+        <h1>Gestão de Contratos BAST</h1>
+        <p id="status" class="loading-msg">Carregando base de dados...</p>
     </header>
 
     <div class="filter-section">
-        <label style="color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase;">Filtrar por Gestor</label>
-        <select id="gestorSelect" onchange="renderCards()">
-            <option value="">Carregando gestores...</option>
+        <label for="gestorSelect">FILTRAR POR GESTOR</label>
+        <select id="gestorSelect" onchange="mostrarDados()">
+            <option value="">Aguarde, carregando...</option>
         </select>
     </div>
 
-    <div id="results" class="results-grid"></div>
+    <div id="results" class="results-area">
+        </div>
 </div>
 
 <script>
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1321629667&single=true&output=csv';
     
-    let globalData = [];
+    let dadosPlanilha = [];
 
-    async function loadData() {
-        try {
-            const response = await fetch(csvUrl);
-            const csvText = await response.text();
-            
-            // Converte CSV para Array de Objetos
-            globalData = parseCSV(csvText);
-            
-            populateSelect();
-            document.getElementById('syncStatus').innerText = 'Dados sincronizados com sucesso';
-            renderCards();
-        } catch (error) {
-            console.error(error);
-            document.getElementById('syncStatus').innerText = 'Erro ao carregar dados da planilha.';
-        }
+    // Função para carregar os dados via PapaParse (trata vírgulas e aspas automaticamente)
+    function carregarDados() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                dadosPlanilha = results.data;
+                popularSelect();
+                document.getElementById('status').innerText = "Base de dados atualizada.";
+            },
+            error: function() {
+                document.getElementById('status').innerText = "Erro ao conectar com a planilha.";
+            }
+        });
     }
 
-    function parseCSV(text) {
-        const lines = text.split('\n');
-        const headers = lines[0].split(',');
-        
-        return lines.slice(1).map(line => {
-            // Regex para lidar com vírgulas dentro de aspas (comum em nomes de empresas)
-            const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-            if (!values) return null;
-            
-            return {
-                gestor: values[0]?.replace(/"/g, '').trim(),
-                fiscal: values[1]?.replace(/"/g, '').trim(),
-                empresa: values[2]?.replace(/"/g, '').trim(),
-                vigencia: values[3]?.replace(/"/g, '').trim(),
-                renovacao: values[4]?.replace(/"/g, '').trim(),
-                mensal: values[5]?.replace(/"/g, '').trim(),
-                fatura: values[6]?.replace(/"/g, '').trim(),
-                saldo: values[7]?.replace(/"/g, '').trim()
-            };
-        }).filter(item => item && item.gestor);
-    }
-
-    function populateSelect() {
+    function popularSelect() {
         const select = document.getElementById('gestorSelect');
-        const gestores = [...new Set(globalData.map(item => item.gestor))].sort();
+        // Extrai gestores únicos e remove nulos
+        const gestores = [...new Set(dadosPlanilha.map(item => item.GESTOR))].filter(g => g).sort();
         
-        select.innerHTML = '<option value="">Todos os Gestores</option>';
+        select.innerHTML = '<option value="">-- Selecione um Gestor --</option>';
         gestores.forEach(g => {
             const opt = document.createElement('option');
             opt.value = g;
-            opt.innerHTML = g;
+            opt.textContent = g;
             select.appendChild(opt);
         });
     }
 
-    function renderCards() {
-        const selected = document.getElementById('gestorSelect').value;
+    function mostrarDados() {
+        const gestorSelecionado = document.getElementById('gestorSelect').value;
         const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = '';
+        resultsDiv.innerHTML = ""; // Limpa a tela
 
-        const filtered = selected 
-            ? globalData.filter(item => item.gestor === selected)
-            : globalData;
+        if (!gestorSelecionado) return;
 
-        if (filtered.length === 0) {
-            resultsDiv.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-dim)">Nenhum contrato encontrado.</div>';
-            return;
-        }
+        const filtrados = dadosPlanilha.filter(item => item.GESTOR === gestorSelecionado);
 
-        filtered.forEach(item => {
-            resultsDiv.innerHTML += `
-                <div class="contract-card">
-                    <div class="field">
-                        <span class="label">Empresa / Objeto</span>
-                        <span class="value highlight">${item.empresa}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Gestor / Fiscal</span>
-                        <span class="value">${item.gestor} / ${item.fiscal}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Vigência</span>
-                        <span class="value">${item.vigencia}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Renovação (90 dias)</span>
-                        <span class="value">${item.renovacao}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Valor Médio Mensal</span>
-                        <span class="value">${item.mensal}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Última Fatura</span>
-                        <span class="value">${item.fatura}</span>
-                    </div>
-                    <div class="field" style="border-bottom: none">
-                        <span class="label">Saldo Disponível</span>
-                        <span class="value highlight" style="font-size: 1.1rem">R$ ${item.saldo}</span>
-                    </div>
+        filtrados.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'contract-card';
+            
+            card.innerHTML = `
+                <div class="empresa-title">${item['EMPRESA / OBJ'] || 'N/A'}</div>
+                
+                <div class="data-row">
+                    <span class="label-text">Fiscal</span>
+                    <span class="value-text">${item['FISCAL'] || '-'}</span>
+                </div>
+                
+                <div class="data-row">
+                    <span class="label-text">Vigência</span>
+                    <span class="value-text">${(item['VIGÊNCIA'] || '-').replace(/\n/g, '<br>')}</span>
+                </div>
+                
+                <div class="data-row">
+                    <span class="label-text">Renovação (90 dias)</span>
+                    <span class="value-text">${(item['RENOVAÇÃO (90 DIAS)'] || '-').replace(/\n/g, '<br>')}</span>
+                </div>
+                
+                <div class="data-row">
+                    <span class="label-text">Valor Médio Mensal</span>
+                    <span class="value-text">R$ ${item['VALOR MÉDIO MENSAL'] || '0,00'}</span>
+                </div>
+                
+                <div class="data-row">
+                    <span class="label-text">Última Fatura Paga</span>
+                    <span class="value-text">${item['ÚLTIMA FATURA PAGA'] || '-'}</span>
+                </div>
+                
+                <div class="data-row" style="border:none">
+                    <span class="label-text" style="color:var(--accent)">Saldo</span>
+                    <span class="value-text" style="color:var(--accent); font-weight:bold">R$ ${item['SALDO'] || '0,00'}</span>
                 </div>
             `;
+            resultsDiv.appendChild(card);
         });
     }
 
-    // Iniciar carregamento ao abrir
-    loadData();
+    // Inicia o processo
+    carregarDados();
 </script>
 
 </body>
