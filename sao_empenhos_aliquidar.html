@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Saldos - SAO</title>
+    <title>Consulta Detalhada - SAO</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -23,7 +23,7 @@
             background: radial-gradient(circle at top right, #0a1f44, #050a1a);
         }
 
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1300px; margin: 0 auto; }
 
         header {
             display: flex; justify-content: space-between; align-items: center;
@@ -36,29 +36,30 @@
         
         select {
             background: #1a2a4a; color: white; border: 1px solid var(--accent);
-            padding: 8px 15px; border-radius: 8px; outline: none; cursor: pointer;
+            padding: 10px 20px; border-radius: 8px; outline: none; cursor: pointer; font-family: 'Poppins';
         }
 
         .summary-card {
-            background: var(--bg-card); padding: 25px; border-radius: 20px;
+            background: var(--bg-card); padding: 20px; border-radius: 15px;
             border: 1px solid rgba(0, 210, 255, 0.2); text-align: center;
             margin-bottom: 25px;
         }
 
-        .summary-card h2 { font-size: 0.9rem; color: var(--meta); text-transform: uppercase; margin: 0; }
-        .summary-card p { font-size: 2.5rem; font-weight: 600; margin: 10px 0; color: var(--bast); }
+        .summary-card h2 { font-size: 0.8rem; color: var(--meta); text-transform: uppercase; margin: 0; }
+        .summary-card p { font-size: 2.2rem; font-weight: 600; margin: 5px 0; color: var(--bast); }
 
         .content-area {
-            background: var(--bg-card); padding: 20px; border-radius: 20px;
+            background: var(--bg-card); padding: 15px; border-radius: 15px;
             border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;
         }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; color: var(--accent); padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; }
-        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        th { text-align: left; color: var(--accent); padding: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); font-size: 0.75rem; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; vertical-align: top; line-height: 1.4; }
         
-        tr:hover { background: rgba(255,255,255,0.02); }
-        .val-num { text-align: right; font-weight: 600; }
+        tr:hover { background: rgba(255,255,255,0.03); }
+        .val-num { font-weight: 600; color: var(--bast); white-space: nowrap; }
+        .status-cell { font-size: 0.75rem; color: var(--meta); max-width: 250px; }
 
         #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
     </style>
@@ -69,15 +70,15 @@
     <header>
         <div class="logo-area">
             <img src="dom.gif" alt="Logo" class="img-logo">
-            <span style="font-weight: 600; color: var(--accent);">SALDOS POR RESPONSÁVEL</span>
+            <span style="font-weight: 600; color: var(--accent);">GESTOR DE EMPENHOS - SAO</span>
         </div>
         <select id="repSelect" onchange="updateUI()">
-            <option value="">Carregando...</option>
+            <option value="">Carregando responsáveis...</option>
         </select>
     </header>
 
     <div class="summary-card">
-        <h2 id="displayNome">Saldo Total</h2>
+        <h2 id="displayNome">Saldo Total Disponível</h2>
         <p id="totalGeral">R$ 0,00</p>
     </div>
 
@@ -85,22 +86,24 @@
         <table>
             <thead>
                 <tr>
-                    <th>EMPRESA / CONTRATO</th>
-                    <th class="val-num">SALDO DISPONÍVEL</th>
+                    <th>Empresa / OBJ</th>
+                    <th>Empenho</th>
+                    <th>Saldo</th>
+                    <th>Termo Ref</th>
+                    <th>Ciente</th>
+                    <th>Status</th>
                 </tr>
             </thead>
-            <tbody id="tableBody">
-                </tbody>
+            <tbody id="tableBody"></tbody>
         </table>
     </div>
 
-    <div id="status">Sincronizando...</div>
+    <div id="status">Sincronizando com Google Sheets...</div>
 </div>
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=87175636&single=true&output=csv'; 
     
-    let rawData = [];
     let responsaveis = {};
 
     function parseValue(v) {
@@ -119,22 +122,42 @@
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
             responsaveis = {};
+            let currentResp = "";
 
-            // Começa do i=1 para pular cabeçalho
             for (let i = 1; i < lines.length; i++) {
+                // Regex para lidar com vírgulas dentro de aspas (comum na coluna Status)
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                if(c.length < 3) continue;
+                if(c.length < 2) continue;
 
-                const resp = c[0].replace(/"/g, '').trim();
-                const empresa = c[1].replace(/"/g, '').trim();
-                const saldo = parseValue(c[2]);
+                let respCol = c[0].replace(/"/g, '').trim();
+                
+                // Se a coluna de responsável tiver nome, atualiza o atual. Se não, continua no anterior (agrupamento)
+                if (respCol !== "" && respCol !== "TOTAL") {
+                    currentResp = respCol;
+                }
 
-                if (!responsaveis[resp]) {
-                    responsaveis[resp] = { empresas: [], total: 0 };
+                if (!currentResp || respCol === "TOTAL") continue;
+
+                const empresa = c[1] ? c[1].replace(/"/g, '').trim() : "";
+                const empenho = c[2] ? c[2].replace(/"/g, '').trim() : "";
+                const saldoStr = c[3] ? c[3].replace(/"/g, '').trim() : "";
+                const termo = c[4] ? c[4].replace(/"/g, '').trim() : "";
+                const ciente = c[5] ? c[5].replace(/"/g, '').trim() : "";
+                const status = c[6] ? c[6].replace(/"/g, '').trim() : "";
+
+                // Ignora linhas que são apenas somas parciais (geralmente têm saldo mas não empresa)
+                if (empresa === "" && saldoStr !== "") continue;
+                if (empresa === "" && empenho === "") continue;
+
+                if (!responsaveis[currentResp]) {
+                    responsaveis[currentResp] = { linhas: [], total: 0 };
                 }
                 
-                responsaveis[resp].empresas.push({ nome: empresa, valor: saldo });
-                responsaveis[resp].total += saldo;
+                const saldoNum = parseValue(saldoStr);
+                responsaveis[currentResp].linhas.push({
+                    empresa, empenho, saldo: saldoNum, termo, ciente, status
+                });
+                responsaveis[currentResp].total += saldoNum;
             }
 
             const select = document.getElementById('repSelect');
@@ -142,9 +165,10 @@
             select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
 
             updateUI();
-            document.getElementById('status').innerText = "● Dados Atualizados";
+            document.getElementById('status').innerText = "● Sincronizado com a Planilha";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro na sincronização.";
+            console.error(e);
+            document.getElementById('status').innerText = "Erro ao ler a planilha.";
         }
     }
 
@@ -158,12 +182,14 @@
         document.getElementById('totalGeral').innerText = formatarMoeda(data.total);
 
         const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = data.empresas.map(emp => `
+        tbody.innerHTML = data.linhas.map(l => `
             <tr>
-                <td>${emp.nome}</td>
-                <td class="val-num" style="color: ${emp.valor > 0 ? 'var(--bast)' : 'var(--meta)'}">
-                    ${formatarMoeda(emp.valor)}
-                </td>
+                <td style="font-weight:600">${l.empresa}</td>
+                <td style="color:var(--accent)">${l.empenho}</td>
+                <td class="val-num">${formatarMoeda(l.saldo)}</td>
+                <td>${l.termo}</td>
+                <td>${l.ciente}</td>
+                <td class="status-cell">${l.status}</td>
             </tr>
         `).join('');
     }
