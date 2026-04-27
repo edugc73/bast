@@ -104,12 +104,10 @@
 </div>
 
 <script>
-    // URL da sua planilha fornecida
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=87175636&single=true&output=csv'; 
     
     let responsaveis = {};
 
-    // Função para limpar valores monetários da planilha
     function parseValue(v) {
         if (!v || v.trim() === "") return 0;
         let text = v.toString().replace(/"/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
@@ -119,7 +117,6 @@
 
     const formatarMoeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    // Função essencial para ler o CSV do Google sem erros de quebra de linha
     function robustCSVParse(text) {
         const rows = [];
         let currField = "";
@@ -147,7 +144,6 @@
 
     async function loadData() {
         try {
-            // Adicionamos um carimbo de tempo para evitar que o navegador use dados antigos (cache)
             const response = await fetch(SHEET_URL + '&t=' + new Date().getTime());
             const csvText = await response.text();
             const rows = robustCSVParse(csvText);
@@ -155,19 +151,23 @@
             responsaveis = {};
             let currentResp = "";
 
-            // Começa do 1 para pular o cabeçalho
+            // Lista de patentes permitidas para identificar um novo responsável
+            const patentesPermitidas = ["SGT", "SO", "CAP", "TEN", "MAJ", "TC", "CEL"];
+
             for (let i = 1; i < rows.length; i++) {
                 const c = rows[i];
                 if(c.length < 2) continue;
 
                 let respCol = c[0] ? c[0].trim().toUpperCase() : "";
                 
-                // Se encontrar CAP ou TEN, troca o responsável atual
-                if (respCol.startsWith("CAP ") || respCol.startsWith("TEN ")) {
+                // NOVA LÓGICA DE DETECÇÃO:
+                // Verifica se a primeira coluna começa com alguma das patentes da lista
+                const eNovoResponsavel = patentesPermitidas.some(p => respCol.startsWith(p + " "));
+
+                if (eNovoResponsavel) {
                     currentResp = respCol;
                 }
 
-                // Pula linhas de totalização da planilha
                 if (!currentResp || respCol === "TOTAL" || respCol.includes("SOMA")) continue;
 
                 const empresa = c[1] ? c[1].trim() : "";
@@ -177,17 +177,15 @@
                 const ciente = c[5] ? c[5].trim() : "";
                 const status = c[6] ? c[6].trim() : "";
 
-                // Só adiciona se houver dado útil na linha
                 if (empresa === "" && empenho === "" && saldoStr === "") continue;
-                // Filtra linhas que são apenas somas parciais
-                if (empresa === "" && saldoStr !== "" && empenho === "") continue;
+                if (empresa === "" && saldoStr !== "" && empenho === "") return;
 
                 if (!responsaveis[currentResp]) {
                     responsaveis[currentResp] = { linhas: [], total: 0 };
                 }
                 
                 const saldoNum = parseValue(saldoStr);
-                responsaveis[currentCursor = currentResp].linhas.push({
+                responsaveis[currentResp].linhas.push({
                     empresa, empenho, saldo: saldoNum, termo, ciente, status
                 });
                 responsaveis[currentResp].total += saldoNum;
@@ -197,7 +195,6 @@
             const nomes = Object.keys(responsaveis).sort();
             
             if (nomes.length > 0) {
-                // Preserva a seleção atual se possível
                 const lastSelected = select.value;
                 select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
                 if (nomes.includes(lastSelected)) select.value = lastSelected;
@@ -232,7 +229,6 @@
         `).join('');
     }
 
-    // Atualiza a cada 2 minutos automaticamente
     setInterval(loadData, 120000);
     loadData();
 </script>
