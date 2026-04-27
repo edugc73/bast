@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta Detalhada - SAO</title>
+    <title>Gestor de Saldos - SAO</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -23,7 +23,7 @@
             background: radial-gradient(circle at top right, #0a1f44, #050a1a);
         }
 
-        .container { max-width: 1300px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
 
         header {
             display: flex; justify-content: space-between; align-items: center;
@@ -37,6 +37,7 @@
         select {
             background: #1a2a4a; color: white; border: 1px solid var(--accent);
             padding: 10px 20px; border-radius: 8px; outline: none; cursor: pointer; font-family: 'Poppins';
+            font-size: 0.9rem;
         }
 
         .summary-card {
@@ -53,13 +54,14 @@
             border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;
         }
 
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
         th { text-align: left; color: var(--accent); padding: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); font-size: 0.75rem; text-transform: uppercase; }
-        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; vertical-align: top; line-height: 1.4; }
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; vertical-align: top; line-height: 1.5; }
         
         tr:hover { background: rgba(255,255,255,0.03); }
         .val-num { font-weight: 600; color: var(--bast); white-space: nowrap; }
-        .status-cell { font-size: 0.75rem; color: var(--meta); max-width: 300px; white-space: pre-line; }
+        .status-cell { color: #cbd5e1; max-width: 300px; font-size: 0.75rem; white-space: pre-line; }
+        .empresa-cell { font-weight: 600; color: #fff; max-width: 250px; }
 
         #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
     </style>
@@ -98,7 +100,7 @@
         </table>
     </div>
 
-    <div id="status">Sincronizando com Google Sheets...</div>
+    <div id="status">Sincronizando...</div>
 </div>
 
 <script>
@@ -115,8 +117,7 @@
 
     const formatarMoeda = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    // FUNÇÃO CRÍTICA: Processa o CSV respeitando aspas e ignorando quebras de linha dentro delas
-    function robustCSVParse(text) {
+    function parseCSV(text) {
         const rows = [];
         let currField = "";
         let currRow = [];
@@ -145,70 +146,77 @@
         try {
             const response = await fetch(SHEET_URL);
             const csvText = await response.text();
-            const rows = robustCSVParse(csvText);
+            const rows = parseCSV(csvText);
             
             responsaveis = {};
-            let currentResp = "";
+            let currentCursor = "";
 
-            // Começa do idx 1 para pular cabeçalho
-            for (let i = 1; i < rows.length; i++) {
-                const c = rows[i];
-                if(c.length < 2) continue;
+            rows.forEach((cols, idx) => {
+                if (idx === 0) return;
 
-                let respCol = c[0].trim().toUpperCase();
+                let col0 = cols[0] ? cols[0].trim().toUpperCase() : "";
                 
-                // REGRA: Só muda o responsável se a célula começar com as patentes corretas
-                if (respCol.startsWith("CAP ") || respCol.startsWith("TEN ")) {
-                    currentResp = respCol;
+                // DETECÇÃO AUTOMÁTICA: Se a célula começar com CAP ou TEN, é um novo responsável
+                // Isso permite que você adicione novos nomes sem mexer no código
+                if (col0.startsWith("CAP ") || col0.startsWith("TEN ")) {
+                    currentCursor = col0;
                 }
 
-                // Ignora se não tiver responsável ou se for linha de TOTAL/SOMA
-                if (!currentResp || respCol === "TOTAL" || respCol.includes("SOMA")) continue;
+                // Se a linha for de TOTAL ou estiver vazia antes de encontrar um oficial, ignora
+                if (!currentCursor || col0 === "TOTAL" || col0.includes("SOMA")) return;
 
-                const empresa = c[1] ? c[1].trim() : "";
-                const empenho = c[2] ? c[2].trim() : "";
-                const saldoStr = c[3] ? c[3].trim() : "";
-                const termo = c[4] ? c[4].trim() : "";
-                const ciente = c[5] ? c[5].trim() : "";
-                const status = c[6] ? c[6].trim() : "";
+                const empresa = cols[1] ? cols[1].trim() : "";
+                const empenho = cols[2] ? cols[2].trim() : "";
+                const saldoStr = cols[3] ? cols[3].trim() : "";
+                const termo = cols[4] ? cols[4].trim() : "";
+                const ciente = cols[5] ? cols[5].trim() : "";
+                const status = cols[6] ? cols[6].trim() : "";
 
-                // Só adiciona se houver empresa ou empenho real na linha
-                if (empresa === "" && empenho === "") continue;
+                // Só processa se houver saldo, empresa ou empenho para evitar lixo
+                if (empresa === "" && empenho === "" && saldoStr === "") return;
+                
+                // Ignora linhas de soma parcial da planilha (Saldo preenchido mas Empresa vazia)
+                if (empresa === "" && saldoStr !== "" && empenho === "") return;
 
-                if (!responsaveis[currentResp]) {
-                    responsaveis[currentResp] = { linhas: [], total: 0 };
+                if (!responsaveis[currentCursor]) {
+                    responsaveis[currentCursor] = { linhas: [], total: 0 };
                 }
                 
                 const saldoNum = parseValue(saldoStr);
-                responsaveis[currentResp].linhas.push({
+                responsaveis[currentCursor].linhas.push({
                     empresa, empenho, saldo: saldoNum, termo, ciente, status
                 });
-                responsaveis[currentResp].total += saldoNum;
-            }
+                responsaveis[currentCursor].total += saldoNum;
+            });
 
             const select = document.getElementById('repSelect');
             const nomes = Object.keys(responsaveis).sort();
-            select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
+            
+            if (nomes.length > 0) {
+                select.innerHTML = nomes.map(n => `<option value="${n}">${n}</option>`).join('');
+                updateUI();
+            } else {
+                select.innerHTML = '<option>Nenhum responsável encontrado</option>';
+            }
 
-            updateUI();
             document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro ao carregar planilha.";
+            document.getElementById('status').innerText = "Erro na sincronização.";
         }
     }
 
     function updateUI() {
-        const selected = document.getElementById('repSelect').value;
-        const data = responsaveis[selected];
+        const sel = document.getElementById('repSelect').value;
+        const data = responsaveis[sel];
         if (!data) return;
 
-        document.getElementById('displayNome').innerText = `Saldo Total - ${selected}`;
+        document.getElementById('displayNome').innerText = `Saldo Total - ${sel}`;
         document.getElementById('totalGeral').innerText = formatarMoeda(data.total);
 
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = data.linhas.map(l => `
             <tr>
-                <td style="font-weight:600">${l.empresa}</td>
+                <td class="empresa-cell">${l.empresa}</td>
                 <td style="color:var(--accent)">${l.empenho}</td>
                 <td class="val-num">${formatarMoeda(l.saldo)}</td>
                 <td>${l.termo}</td>
