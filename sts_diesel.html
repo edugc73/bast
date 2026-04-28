@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard BAST - Controle de Diesel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #050a1a; color: #e2e8f0; }
+        .glass-card { 
+            background: rgba(30, 41, 59, 0.7); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+        .accent-cyan { color: #22d3ee; }
+        .bg-accent-cyan { background-color: #0891b2; }
+        
+        select {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            outline: none;
+            min-width: 150px;
+        }
+        select:focus { border-color: #22d3ee; }
+        
+        .loader {
+            border: 3px solid #1e293b;
+            border-radius: 50%;
+            border-top: 3px solid #22d3ee;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+            <div>
+                <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    BAST - Controle de Combustível
+                </h1>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-[0.3em] mt-2">Dados em Tempo Real via Google Sheets</p>
+            </div>
+
+            <div class="flex flex-wrap gap-4 items-center" id="filterControls" style="display: none;">
+                <div class="flex flex-col">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 ml-1">Mês de Referência</label>
+                    <select id="mesSelect" onchange="updateDashboard()">
+                        <!-- Opções preenchidas dinamicamente -->
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 ml-1">Métrica do Gráfico</label>
+                    <select id="metricSelect" onchange="updateDashboard()">
+                        <option value="consumo">Consumo Viaturas (L)</option>
+                        <option value="km">Quilometragem (KM)</option>
+                        <option value="total">Consumo Total (L)</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="flex flex-col items-center justify-center py-20">
+            <div class="loader mb-4"></div>
+            <p class="text-slate-400 animate-pulse uppercase text-xs tracking-widest">Carregando dados da planilha...</p>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Seção de Controle Final em Litros (Cartões, sem gráfico) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="glass-card p-6 rounded-3xl shadow-2xl">
+                    <p class="text-slate-400 text-xs font-bold uppercase mb-2">Estoque Anterior</p>
+                    <h2 id="estoqueAnterior" class="text-4xl font-black text-white">0 L</h2>
+                    <div class="mt-2 text-[10px] text-slate-500 uppercase">Referente ao início do mês</div>
+                </div>
+                <div class="glass-card p-6 rounded-3xl shadow-2xl border-l-4 border-cyan-500">
+                    <p class="text-cyan-400 text-xs font-bold uppercase mb-2">Aquisição no Mês</p>
+                    <h2 id="aquisicao" class="text-4xl font-black text-white">0 L</h2>
+                    <div class="mt-2 text-[10px] text-slate-500 uppercase">Total de litros adquiridos</div>
+                </div>
+                <div class="glass-card p-6 rounded-3xl shadow-2xl bg-gradient-to-br from-slate-900 to-blue-900 border border-cyan-500/30">
+                    <p class="text-emerald-400 text-xs font-bold uppercase mb-2">Estoque Atual</p>
+                    <h2 id="estoqueAtual" class="text-5xl font-black text-white">0 L</h2>
+                    <div class="mt-2 text-[10px] text-emerald-500/50 uppercase">Saldo disponível em tanque</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Operacional -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+                <!-- Gráfico de Comparativo -->
+                <div class="lg:col-span-2 glass-card p-6 rounded-3xl min-h-[450px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-lg">Comparativo Anual (2025 vs 2026)</h3>
+                        <div id="chartLegend" class="flex gap-4 text-[10px] font-bold uppercase">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-slate-700 rounded"></span> 2025</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-cyan-400 rounded"></span> 2026</span>
+                        </div>
+                    </div>
+                    <div class="relative h-[350px]">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Detalhamento Consumo -->
+                <div class="glass-card p-6 rounded-3xl flex flex-col">
+                    <h3 class="font-bold text-lg mb-6">Detalhamento: <span id="mesNome" class="accent-cyan italic">Janeiro</span></h3>
+                    
+                    <div class="space-y-6 flex-grow">
+                        <div class="flex justify-between items-center group">
+                            <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Viaturas</span>
+                            <span id="detalheViaturas" class="font-bold text-white text-xl">0 L</span>
+                        </div>
+                        <div class="flex justify-between items-center group">
+                            <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Maquinário</span>
+                            <span id="detalheMaquinario" class="font-bold text-white text-xl">0 L</span>
+                        </div>
+                        <div class="flex justify-between items-center group">
+                            <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Evaporação</span>
+                            <span id="detalheEvaporacao" class="font-bold text-red-400/80 text-xl">0 L</span>
+                        </div>
+                        <div class="flex justify-between items-center group">
+                            <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Outras OM</span>
+                            <span id="detalheOutras" class="font-bold text-blue-400 text-xl">0 L</span>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-slate-700 pt-6">
+                            <span class="text-slate-300 font-bold uppercase text-xs tracking-widest">Consumo Mensal</span>
+                            <span id="detalheTotal" class="font-black text-cyan-400 text-3xl">0 L</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 p-5 bg-cyan-500/10 rounded-2xl border border-cyan-500/20">
+                        <p class="text-[10px] text-cyan-300 font-bold uppercase mb-1 tracking-widest">Eficiência Viaturas (KM/L)</p>
+                        <p id="kmlMedio" class="text-3xl font-black text-white">0.00</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center text-slate-600 text-[10px] uppercase tracking-[0.4em] mt-12 pb-10 border-t border-slate-800/50 pt-8">
+            BAST • Gestão de Combustíveis • Dados Sincronizados
+        </footer>
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=844364804&single=true&output=csv';
+        
+        let dieselData = {};
+        let myChart;
+
+        function parseCSV(str) {
+            const arr = [];
+            let quote = false;
+            for (let row = col = c = 0; c < str.length; c++) {
+                let cc = str[c], nc = str[c+1];
+                arr[row] = arr[row] || [];
+                arr[row][col] = arr[row][col] || "";
+                if (cc == '"' && quote && nc == '"') { arr[row][col] += cc; ++c; continue; }
+                if (cc == '"') { quote = !quote; continue; }
+                if (cc == ',' && !quote) { ++col; continue; }
+                if (cc == '\r' && nc == '\n' && !quote) { ++row; col = 0; ++c; continue; }
+                if (cc == '\n' && !quote) { ++row; col = 0; continue; }
+                if (cc == '\r' && !quote) { ++row; col = 0; continue; }
+                arr[row][col] += cc;
+            }
+            return arr;
+        }
+
+        function cleanVal(val) {
+            if (!val) return 0;
+            return parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
+        }
+
+        async function loadData() {
+            try {
+                const response = await fetch(CSV_URL);
+                const text = await response.text();
+                const rows = parseCSV(text);
+
+                // Mapeamento baseado na estrutura da planilha (Linha 3 em diante são os meses)
+                // Colunas: 0:Mes, 1:V25, 2:V26, 3:K25, 4:K26, 5:M25, 6:M26, 7:E25, 8:E26, 9:O25, 10:O26, 11:T25, 12:T26, 14:Ant, 15:Aqui, 16:Atual
+                
+                const selectMes = document.getElementById('mesSelect');
+                selectMes.innerHTML = '';
+
+                rows.forEach((row, idx) => {
+                    if (idx < 2) return; // Pula cabeçalhos
+                    const mesNome = row[0];
+                    if (!mesNome || mesNome.trim() === "" || mesNome.includes('CONTROLE')) return;
+
+                    dieselData[mesNome] = {
+                        v25: cleanVal(row[1]), v26: cleanVal(row[2]),
+                        k25: cleanVal(row[3]), k26: cleanVal(row[4]),
+                        maq25: cleanVal(row[5]), maq26: cleanVal(row[6]),
+                        evap25: cleanVal(row[7]), evap26: cleanVal(row[8]),
+                        outr25: cleanVal(row[9]), outr26: cleanVal(row[10]),
+                        total25: cleanVal(row[11]), total26: cleanVal(row[12]),
+                        anterior: cleanVal(row[14]), 
+                        aquisicao: cleanVal(row[15]), 
+                        atual: cleanVal(row[16])
+                    };
+
+                    const option = document.createElement('option');
+                    option.value = mesNome;
+                    option.textContent = mesNome.charAt(0).toUpperCase() + mesNome.slice(1).toLowerCase();
+                    selectMes.appendChild(option);
+                });
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                document.getElementById('filterControls').style.display = 'flex';
+                
+                updateDashboard();
+
+            } catch (err) {
+                console.error("Erro ao carregar dados:", err);
+                document.getElementById('loadingState').innerHTML = `<p class="text-red-400">Erro ao carregar dados da planilha. Verifique a conexão.</p>`;
+            }
+        }
+
+        function updateDashboard() {
+            const mes = document.getElementById('mesSelect').value;
+            const metric = document.getElementById('metricSelect').value;
+            const data = dieselData[mes];
+
+            if (!data) return;
+
+            // Atualiza Seção de Controle Final (Dinâmica conforme mês)
+            document.getElementById('estoqueAnterior').innerText = data.anterior.toLocaleString('pt-BR') + ' L';
+            document.getElementById('aquisicao').innerText = data.aquisicao.toLocaleString('pt-BR') + ' L';
+            document.getElementById('estoqueAtual').innerText = data.atual.toLocaleString('pt-BR') + ' L';
+
+            // Atualiza Detalhamento
+            document.getElementById('mesNome').innerText = mes;
+            document.getElementById('detalheViaturas').innerText = data.v26.toLocaleString('pt-BR') + ' L';
+            document.getElementById('detalheMaquinario').innerText = data.maq26.toLocaleString('pt-BR') + ' L';
+            document.getElementById('detalheEvaporacao').innerText = data.evap26.toLocaleString('pt-BR') + ' L';
+            document.getElementById('detalheOutras').innerText = data.outr26.toLocaleString('pt-BR') + ' L';
+            document.getElementById('detalheTotal').innerText = data.total26.toLocaleString('pt-BR') + ' L';
+
+            const kml = data.v26 > 0 ? (data.k26 / data.v26).toFixed(2) : "0.00";
+            document.getElementById('kmlMedio').innerText = kml;
+
+            renderChart(metric);
+        }
+
+        function renderChart(type) {
+            const labels = Object.keys(dieselData);
+            let d25, d26, unit;
+
+            if (type === 'consumo') {
+                d25 = labels.map(m => dieselData[m].v25);
+                d26 = labels.map(m => dieselData[m].v26);
+                unit = 'L';
+            } else if (type === 'km') {
+                d25 = labels.map(m => dieselData[m].k25);
+                d26 = labels.map(m => dieselData[m].k26);
+                unit = 'KM';
+            } else {
+                d25 = labels.map(m => dieselData[m].total25);
+                d26 = labels.map(m => dieselData[m].total26);
+                unit = 'L';
+            }
+
+            if (myChart) myChart.destroy();
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '2025',
+                            data: d25,
+                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        },
+                        {
+                            label: '2026',
+                            data: d26,
+                            backgroundColor: '#22d3ee',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
