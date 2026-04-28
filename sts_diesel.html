@@ -59,7 +59,6 @@
                 <div class="flex flex-col">
                     <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 ml-1">Mês de Referência</label>
                     <select id="mesSelect" onchange="updateDashboard()">
-                        <!-- Opções preenchidas dinamicamente -->
                     </select>
                 </div>
                 <div class="flex flex-col">
@@ -81,7 +80,7 @@
 
         <!-- Main Content -->
         <div id="mainContent" style="display: none;">
-            <!-- Seção de Controle Final em Litros (Cartões, sem gráfico) -->
+            <!-- Seção de Controle Final -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
                 <div class="glass-card p-6 rounded-3xl shadow-2xl">
                     <p class="text-slate-400 text-xs font-bold uppercase mb-2">Estoque Anterior</p>
@@ -105,7 +104,7 @@
                 <!-- Gráfico de Comparativo -->
                 <div class="lg:col-span-2 glass-card p-6 rounded-3xl min-h-[450px]">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-lg">Comparativo Anual (2025 vs 2026)</h3>
+                        <h3 class="font-bold text-lg" id="chartTitle">Comparativo Anual</h3>
                         <div id="chartLegend" class="flex gap-4 text-[10px] font-bold uppercase">
                             <span class="flex items-center gap-1"><span class="w-3 h-3 bg-slate-700 rounded"></span> 2025</span>
                             <span class="flex items-center gap-1"><span class="w-3 h-3 bg-cyan-400 rounded"></span> 2026</span>
@@ -116,34 +115,15 @@
                     </div>
                 </div>
 
-                <!-- Detalhamento Consumo -->
-                <div class="glass-card p-6 rounded-3xl flex flex-col">
+                <!-- Detalhamento Dinâmico -->
+                <div class="glass-card p-6 rounded-3xl flex flex-col" id="detailPanel">
                     <h3 class="font-bold text-lg mb-6">Detalhamento: <span id="mesNome" class="accent-cyan italic">Janeiro</span></h3>
                     
-                    <div class="space-y-6 flex-grow">
-                        <div class="flex justify-between items-center group">
-                            <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Viaturas</span>
-                            <span id="detalheViaturas" class="font-bold text-white text-xl">0 L</span>
-                        </div>
-                        <div class="flex justify-between items-center group">
-                            <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Maquinário</span>
-                            <span id="detalheMaquinario" class="font-bold text-white text-xl">0 L</span>
-                        </div>
-                        <div class="flex justify-between items-center group">
-                            <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Evaporação</span>
-                            <span id="detalheEvaporacao" class="font-bold text-red-400/80 text-xl">0 L</span>
-                        </div>
-                        <div class="flex justify-between items-center group">
-                            <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Outras OM</span>
-                            <span id="detalheOutras" class="font-bold text-blue-400 text-xl">0 L</span>
-                        </div>
-                        <div class="flex justify-between items-center border-t border-slate-700 pt-6">
-                            <span class="text-slate-300 font-bold uppercase text-xs tracking-widest">Consumo Mensal</span>
-                            <span id="detalheTotal" class="font-black text-cyan-400 text-3xl">0 L</span>
-                        </div>
+                    <!-- Este container será preenchido dinamicamente via JS -->
+                    <div id="detailContent" class="space-y-6 flex-grow">
                     </div>
 
-                    <div class="mt-8 p-5 bg-cyan-500/10 rounded-2xl border border-cyan-500/20">
+                    <div id="efficiencyBox" class="mt-8 p-5 bg-cyan-500/10 rounded-2xl border border-cyan-500/20">
                         <p class="text-[10px] text-cyan-300 font-bold uppercase mb-1 tracking-widest">Eficiência Viaturas (KM/L)</p>
                         <p id="kmlMedio" class="text-3xl font-black text-white">0.00</p>
                     </div>
@@ -191,14 +171,11 @@
                 const text = await response.text();
                 const rows = parseCSV(text);
 
-                // Mapeamento baseado na estrutura da planilha (Linha 3 em diante são os meses)
-                // Colunas: 0:Mes, 1:V25, 2:V26, 3:K25, 4:K26, 5:M25, 6:M26, 7:E25, 8:E26, 9:O25, 10:O26, 11:T25, 12:T26, 14:Ant, 15:Aqui, 16:Atual
-                
                 const selectMes = document.getElementById('mesSelect');
                 selectMes.innerHTML = '';
 
                 rows.forEach((row, idx) => {
-                    if (idx < 2) return; // Pula cabeçalhos
+                    if (idx < 2) return;
                     const mesNome = row[0];
                     if (!mesNome || mesNome.trim() === "" || mesNome.includes('CONTROLE')) return;
 
@@ -228,7 +205,7 @@
 
             } catch (err) {
                 console.error("Erro ao carregar dados:", err);
-                document.getElementById('loadingState').innerHTML = `<p class="text-red-400">Erro ao carregar dados da planilha. Verifique a conexão.</p>`;
+                document.getElementById('loadingState').innerHTML = `<p class="text-red-400">Erro ao carregar dados da planilha.</p>`;
             }
         }
 
@@ -239,42 +216,102 @@
 
             if (!data) return;
 
-            // Atualiza Seção de Controle Final (Dinâmica conforme mês)
+            // Estoque Superior
             document.getElementById('estoqueAnterior').innerText = data.anterior.toLocaleString('pt-BR') + ' L';
             document.getElementById('aquisicao').innerText = data.aquisicao.toLocaleString('pt-BR') + ' L';
             document.getElementById('estoqueAtual').innerText = data.atual.toLocaleString('pt-BR') + ' L';
 
-            // Atualiza Detalhamento
             document.getElementById('mesNome').innerText = mes;
-            document.getElementById('detalheViaturas').innerText = data.v26.toLocaleString('pt-BR') + ' L';
-            document.getElementById('detalheMaquinario').innerText = data.maq26.toLocaleString('pt-BR') + ' L';
-            document.getElementById('detalheEvaporacao').innerText = data.evap26.toLocaleString('pt-BR') + ' L';
-            document.getElementById('detalheOutras').innerText = data.outr26.toLocaleString('pt-BR') + ' L';
-            document.getElementById('detalheTotal').innerText = data.total26.toLocaleString('pt-BR') + ' L';
 
-            const kml = data.v26 > 0 ? (data.k26 / data.v26).toFixed(2) : "0.00";
-            document.getElementById('kmlMedio').innerText = kml;
+            const detailContent = document.getElementById('detailContent');
+            const efficiencyBox = document.getElementById('efficiencyBox');
+            detailContent.innerHTML = '';
+
+            if (metric === 'km') {
+                // Detalhamento Simplificado para Quilometragem
+                efficiencyBox.style.display = 'none';
+                detailContent.innerHTML = `
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400">Distância 2025</span>
+                        <span class="font-bold text-white text-xl">${data.k25.toLocaleString('pt-BR')} KM</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400">Distância 2026</span>
+                        <span class="font-bold text-cyan-400 text-xl">${data.k26.toLocaleString('pt-BR')} KM</span>
+                    </div>
+                    <div class="border-t border-slate-700 pt-6">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Diferença Mensal</p>
+                        <span class="font-black text-white text-2xl">${(data.k26 - data.k25).toLocaleString('pt-BR')} KM</span>
+                    </div>
+                `;
+            } else if (metric === 'total') {
+                // Detalhamento Simplificado para Consumo Total
+                efficiencyBox.style.display = 'none';
+                detailContent.innerHTML = `
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400">Consumo Total 2025</span>
+                        <span class="font-bold text-white text-xl">${data.total25.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400">Consumo Total 2026</span>
+                        <span class="font-bold text-cyan-400 text-xl">${data.total26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="border-t border-slate-700 pt-6">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Variação no Mês</p>
+                        <span class="font-black text-white text-2xl">${(data.total26 - data.total25).toLocaleString('pt-BR')} L</span>
+                    </div>
+                `;
+            } else {
+                // Detalhamento Completo para Consumo Viaturas (Padrão)
+                efficiencyBox.style.display = 'block';
+                detailContent.innerHTML = `
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Viaturas</span>
+                        <span class="font-bold text-white text-xl">${data.v26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Maquinário</span>
+                        <span class="font-bold text-white text-xl">${data.maq26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Evaporação</span>
+                        <span class="font-bold text-red-400/80 text-xl">${data.evap26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Outras OM</span>
+                        <span class="font-bold text-blue-400 text-xl">${data.outr26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-700 pt-6">
+                        <span class="text-slate-300 font-bold uppercase text-xs tracking-widest">Soma Mensal</span>
+                        <span class="font-black text-cyan-400 text-3xl">${data.total26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                `;
+                const kml = data.v26 > 0 ? (data.k26 / data.v26).toFixed(2) : "0.00";
+                document.getElementById('kmlMedio').innerText = kml;
+            }
 
             renderChart(metric);
         }
 
         function renderChart(type) {
             const labels = Object.keys(dieselData);
-            let d25, d26, unit;
+            let d25, d26, title;
 
             if (type === 'consumo') {
                 d25 = labels.map(m => dieselData[m].v25);
                 d26 = labels.map(m => dieselData[m].v26);
-                unit = 'L';
+                title = 'Comparativo: Consumo Viaturas (L)';
             } else if (type === 'km') {
                 d25 = labels.map(m => dieselData[m].k25);
                 d26 = labels.map(m => dieselData[m].k26);
-                unit = 'KM';
+                title = 'Comparativo: Quilometragem (KM)';
             } else {
                 d25 = labels.map(m => dieselData[m].total25);
                 d26 = labels.map(m => dieselData[m].total26);
-                unit = 'L';
+                title = 'Comparativo: Consumo Total (L)';
             }
+
+            document.getElementById('chartTitle').innerText = title;
 
             if (myChart) myChart.destroy();
 
@@ -303,9 +340,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
                         y: { 
                             grid: { color: 'rgba(255,255,255,0.05)' },
