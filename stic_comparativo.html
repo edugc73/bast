@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comparativo Telefonia - BAST</title>
+    <title>Comparativo STIC - BAST</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -75,6 +75,7 @@
             <select id="contaSelect">
                 <option value="vivo">VIVO FIXO</option>
                 <option value="telefonia">TELEFONIA MOVÉL</option>
+                <option value="telebrasilia">TELEBRASILIA</option>
               </select>
         </div>
     </header>
@@ -137,7 +138,8 @@
                 
                 db.dados[mes] = {
                     "vivo": { v25: parseVal(c[1]), v26: parseVal(c[2]) },
-                    "telefonia": { v25: parseVal(c[3]), v26: parseVal(c[4]) }
+                    "telefonia": { v25: parseVal(c[3]), v26: parseVal(c[4]) },
+                    "telebrasilia": { v25: parseVal(c[3]), v26: parseVal(c[4]) }
                    };
             }
 
