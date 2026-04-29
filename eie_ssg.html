@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard EIE_SSG</title>
+    <title>Dashboard EIE_SSG - Gonça (Aprimorado)</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -70,6 +70,16 @@
 
         .card.highlight::before { background: linear-gradient(90deg, transparent, var(--accent-2), transparent); }
 
+        .card.year-2025 {
+            background: rgba(8, 15, 30, 0.7); /* Fundo mais escuro para ano anterior */
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .card.year-2026 {
+            background: rgba(18, 38, 75, 0.85); /* Fundo com leve tom de azul para o ano atual */
+            border: 1px solid rgba(0, 210, 255, 0.15);
+        }
+
         .card h3 { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 0 0 10px 0; letter-spacing: 0.5px;}
         .card p { font-size: 1.4rem; font-weight: 600; margin: 0; }
         
@@ -122,32 +132,32 @@
     <!-- Cards Reorganizados para maior clareza -->
     <div class="grid-cards">
         <!-- Financeiro -->
-        <div class="card">
+        <div class="card year-2025">
             <h3>Custo Mês (2025)</h3>
             <p id="v2025" style="color: rgba(255,255,255,0.7)">R$ 0,00</p>
         </div>
-        <div class="card highlight">
+        <div class="card highlight year-2026">
             <h3>Custo Mês (2026)</h3>
             <p id="v2026" style="color: var(--accent)">R$ 0,00</p>
             <div id="varR$" class="badge neutral">0%</div>
         </div>
-        <div class="card">
+        <div class="card year-2026">
             <h3>Total Acumulado (2026)</h3>
             <p id="t2026">R$ 0,00</p>
             <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">Soma de todos os meses de 2026</div>
         </div>
         
         <!-- Físico (Consumo) -->
-        <div class="card">
+        <div class="card year-2025">
             <h3>Consumo Mês (2025)</h3>
             <p id="u2025" style="color: rgba(255,255,255,0.7)">0</p>
         </div>
-        <div class="card highlight">
+        <div class="card highlight year-2026">
             <h3>Consumo Mês (2026)</h3>
             <p id="u2026" style="color: #ff007a">0</p>
             <div id="varU" class="badge neutral">0%</div>
         </div>
-        <div class="card">
+        <div class="card year-2026">
             <h3>Média Mensal R$ (2026)</h3>
             <p id="m2026">R$ 0,00</p>
             <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">Considera apenas meses com valor</div>
