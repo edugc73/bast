@@ -3,130 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard BAST - Gestão de Contratos</title>
+    <title>BAST - Gestão Estratégica de Contratos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0a192f;
-            --card-bg: #112240;
-            --text-main: #e6f1ff;
-            --text-dim: #8892b0;
-            --accent: #64ffda;
-            --border: #233554;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-p: #f8fafc;
+            --text-s: #94a3b8;
+            --border: #334155;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
+            background-color: var(--bg);
+            color: var(--text-p);
+            font-family: 'Inter', sans-serif;
             padding: 40px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            line-height: 1.6;
         }
 
-        .container {
-            width: 100%;
-            max-width: 900px;
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        header { margin-bottom: 30px; }
+        h1 { font-size: 1.5rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { color: var(--text-s); font-size: 0.9rem; }
+
+        .top-bar {
+            display: grid;
+            grid-template-columns: 1.2fr 2fr 1fr;
+            gap: 15px;
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 30px;
+            align-items: end;
         }
 
-        header {
-            margin-bottom: 40px;
-            text-align: center;
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 0.75rem; font-weight: 600; color: var(--text-s); text-transform: uppercase; }
+
+        select, input {
+            background: var(--bg);
+            color: var(--text-p);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 8px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        select:focus, input:focus { border-color: var(--accent); }
+
+        .summary-box {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
         }
 
-        h1 {
-            font-size: 1.8rem;
-            color: var(--accent);
-            font-weight: 300;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .filter-section {
-            background: var(--card-bg);
-            padding: 25px;
+        .mini-card {
+            background: var(--card);
+            padding: 15px;
             border-radius: 12px;
             border: 1px solid var(--border);
             text-align: center;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(2, 12, 27, 0.5);
         }
+        .mini-card span { display: block; font-size: 0.75rem; color: var(--text-s); text-transform: uppercase; }
+        .mini-card b { font-size: 1.2rem; color: var(--accent); }
 
-        label {
-            display: block;
-            margin-bottom: 15px;
-            color: var(--text-dim);
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-        }
-
-        select {
-            background: #0a192f;
-            color: var(--accent);
-            border: 1px solid var(--accent);
-            padding: 12px 20px;
-            border-radius: 5px;
-            width: 100%;
-            max-width: 350px;
-            font-size: 1rem;
-            outline: none;
-        }
-
-        .results-area {
-            display: flex;
-            flex-direction: column;
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 20px;
         }
 
         .contract-card {
-            background: var(--card-bg);
+            background: var(--card);
             border: 1px solid var(--border);
+            border-radius: 16px;
             padding: 25px;
-            border-radius: 8px;
-            border-left: 5px solid var(--accent);
-            animation: fadeIn 0.5s ease-in;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
         }
+        .contract-card:hover { transform: translateY(-5px); border-color: var(--accent); }
 
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(35, 53, 84, 0.5);
-        }
-
-        .data-row:last-child { border-bottom: none; }
-
-        .label-text {
-            color: var(--text-dim);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-
-        .value-text {
-            color: var(--text-main);
-            font-size: 1rem;
-            text-align: right;
-            max-width: 60%;
-        }
-
-        .empresa-title {
-            color: var(--accent);
-            font-size: 1.2rem;
+        .contract-header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
             margin-bottom: 15px;
-            border-bottom: 1px solid var(--accent);
-            padding-bottom: 10px;
-            font-weight: bold;
+        }
+        .empresa { font-size: 1.1rem; font-weight: 700; color: var(--text-p); display: block; }
+        .fiscal { font-size: 0.8rem; color: var(--accent); font-weight: 500; }
+        .gestor-info { font-size: 0.7rem; color: var(--text-s); margin-top: 2px; display: block; }
+
+        .data-grid { display: grid; gap: 12px; }
+        .item { display: flex; justify-content: space-between; align-items: flex-start; }
+        .item-label { font-size: 0.7rem; color: var(--text-s); text-transform: uppercase; font-weight: 600; }
+        .item-value { font-size: 0.85rem; text-align: right; max-width: 60%; }
+
+        .badge-alert {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: inline-block;
+            margin-top: 5px;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .saldo-container { margin-top: 15px; padding-top: 15px; border-top: 1px dotted var(--border); }
+        .saldo-header { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 5px; }
+        .saldo-bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+        .saldo-fill { height: 100%; background: var(--success); transition: width 0.5s; }
+
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 50px;
+            color: var(--text-s);
+            border: 2px dashed var(--border);
+            border-radius: 16px;
         }
 
-        .loading-msg { color: var(--accent); font-style: italic; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .contract-card { animation: slideUp 0.4s ease-out; }
     </style>
 </head>
 <body>
@@ -134,108 +143,174 @@
 <div class="container">
     <header>
         <h1>Gestão de Contratos BAST</h1>
-        <p id="status" class="loading-msg">Carregando base de dados...</p>
+        <p class="subtitle" id="status">Sincronizando dados...</p>
     </header>
 
-    <div class="filter-section">
-        <label for="gestorSelect">FILTRAR POR GESTOR</label>
-        <select id="gestorSelect" onchange="mostrarDados()">
-            <option value="">Aguarde, carregando...</option>
-        </select>
+    <div class="top-bar">
+        <div class="input-group">
+            <label>Filtrar por Gestor</label>
+            <select id="gestorSelect" onchange="limparBuscaERenderizar()">
+                <option value="">-- Todos os Gestores --</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Buscar Empresa/Objeto</label>
+            <input type="text" id="searchInput" placeholder="Digite o nome da empresa..." oninput="renderizar()">
+        </div>
+        <div class="input-group">
+            <label>Status Crítico</label>
+            <select id="statusFilter" onchange="renderizar()">
+                <option value="todos">Todos</option>
+                <option value="alerta">Em Alerta</option>
+            </select>
+        </div>
     </div>
 
-    <div id="results" class="results-area">
+    <div class="summary-box" id="resumo" style="display: none;">
+        <div class="mini-card">
+            <span>Resultados Encontrados</span>
+            <b id="countContratos">0</b>
         </div>
+        <div class="mini-card">
+            <span>Saldo Total Filtrado</span>
+            <b id="totalSaldo">R$ 0,00</b>
+        </div>
+    </div>
+
+    <div id="results" class="results-grid"></div>
 </div>
 
 <script>
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1321629667&single=true&output=csv';
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1321629667&single=true&output=csv';
     
-    let dadosPlanilha = [];
+    let baseDados = [];
 
-    // Função para carregar os dados via PapaParse (trata vírgulas e aspas automaticamente)
-    function carregarDados() {
-        Papa.parse(csvUrl, {
+    function limparBuscaERenderizar() {
+        // Opcional: Limpar busca ao mudar gestor para evitar confusão
+        // document.getElementById('searchInput').value = "";
+        renderizar();
+    }
+
+    function init() {
+        Papa.parse(CSV_URL, {
             download: true,
             header: true,
             skipEmptyLines: true,
             complete: function(results) {
-                dadosPlanilha = results.data;
-                popularSelect();
-                document.getElementById('status').innerText = "Base de dados atualizada.";
-            },
-            error: function() {
-                document.getElementById('status').innerText = "Erro ao conectar com a planilha.";
+                baseDados = results.data;
+                const gestores = [...new Set(baseDados.map(i => i.GESTOR))].filter(g => g).sort();
+                const sel = document.getElementById('gestorSelect');
+                sel.innerHTML = '<option value="">-- Todos os Gestores --</option>' + 
+                                gestores.map(g => `<option value="${g}">${g}</option>`).join('');
+                document.getElementById('status').innerText = "Base de dados operacional.";
+                renderizar(); // Renderiza inicial (vazio ou busca)
             }
         });
     }
 
-    function popularSelect() {
-        const select = document.getElementById('gestorSelect');
-        // Extrai gestores únicos e remove nulos
-        const gestores = [...new Set(dadosPlanilha.map(item => item.GESTOR))].filter(g => g).sort();
-        
-        select.innerHTML = '<option value="">-- Selecione um Gestor --</option>';
-        gestores.forEach(g => {
-            const opt = document.createElement('option');
-            opt.value = g;
-            opt.textContent = g;
-            select.appendChild(opt);
-        });
-    }
-
-    function mostrarDados() {
-        const gestorSelecionado = document.getElementById('gestorSelect').value;
+    function renderizar() {
+        const gestor = document.getElementById('gestorSelect').value;
+        const busca = document.getElementById('searchInput').value.toLowerCase().trim();
+        const statusF = document.getElementById('statusFilter').value;
         const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = ""; // Limpa a tela
+        const resumoDiv = document.getElementById('resumo');
+        
+        resultsDiv.innerHTML = "";
 
-        if (!gestorSelecionado) return;
+        // Se não tem gestor e não tem busca, não mostra nada para não poluir
+        if (!gestor && !busca) {
+            resumoDiv.style.display = "none";
+            resultsDiv.innerHTML = `<div class="no-results">Selecione um gestor ou digite o nome de uma empresa para iniciar a busca.</div>`;
+            return;
+        }
 
-        const filtrados = dadosPlanilha.filter(item => item.GESTOR === gestorSelecionado);
+        // Lógica de filtragem
+        let filtrados = baseDados;
+
+        // 1. Filtrar por Gestor (apenas se um gestor for selecionado)
+        if (gestor) {
+            filtrados = filtrados.filter(i => i.GESTOR === gestor);
+        }
+
+        // 2. Filtrar por Busca (se houver texto)
+        if (busca) {
+            filtrados = filtrados.filter(i => 
+                (i['EMPRESA / OBJ'] || "").toLowerCase().includes(busca)
+            );
+        }
+
+        // 3. Filtrar por Alerta (após os outros filtros)
+        if (statusF === 'alerta') {
+            filtrados = filtrados.filter(item => {
+                const saldoNum = parseFloat((item.SALDO || '0').replace(/\./g, '').replace(',', '.')) || 0;
+                const valorMensal = parseFloat((item['VALOR MÉDIO MENSAL'] || '0').replace(/\./g, '').replace(',', '.')) || 1;
+                return saldoNum < (valorMensal * 3);
+            });
+        }
+
+        // Resumo estatístico
+        if (filtrados.length > 0) {
+            resumoDiv.style.display = "grid";
+            document.getElementById('countContratos').innerText = filtrados.length;
+            const somaSaldo = filtrados.reduce((acc, i) => acc + (parseFloat((i.SALDO || '0').replace(/\./g, '').replace(',', '.')) || 0), 0);
+            document.getElementById('totalSaldo').innerText = somaSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        } else {
+            resumoDiv.style.display = "none";
+            resultsDiv.innerHTML = `<div class="no-results">Nenhum contrato encontrado para os critérios selecionados.</div>`;
+            return;
+        }
 
         filtrados.forEach(item => {
+            const saldoNum = parseFloat((item.SALDO || '0').replace(/\./g, '').replace(',', '.')) || 0;
+            const valorMensal = parseFloat((item['VALOR MÉDIO MENSAL'] || '0').replace(/\./g, '').replace(',', '.')) || 1;
+            const emAlerta = saldoNum < (valorMensal * 3);
+
             const card = document.createElement('div');
             card.className = 'contract-card';
             
             card.innerHTML = `
-                <div class="empresa-title">${item['EMPRESA / OBJ'] || 'N/A'}</div>
-                
-                <div class="data-row">
-                    <span class="label-text">Fiscal</span>
-                    <span class="value-text">${item['FISCAL'] || '-'}</span>
+                <div class="contract-header">
+                    <span class="empresa">${item['EMPRESA / OBJ'] || 'Objeto não identificado'}</span>
+                    <span class="fiscal">Fiscal: ${item.FISCAL || 'N/A'}</span>
+                    <span class="gestor-info">Gestor: ${item.GESTOR || 'N/A'}</span>
+                    ${emAlerta ? '<span class="badge-alert">SALDO EM ATENÇÃO</span>' : ''}
                 </div>
-                
-                <div class="data-row">
-                    <span class="label-text">Vigência</span>
-                    <span class="value-text">${(item['VIGÊNCIA'] || '-').replace(/\n/g, '<br>')}</span>
+
+                <div class="data-grid">
+                    <div class="item">
+                        <span class="item-label">Vigência</span>
+                        <span class="item-value">${(item['VIGÊNCIA'] || '-').replace(/\n/g, '<br>')}</span>
+                    </div>
+                    <div class="item">
+                        <span class="item-label">Renovação</span>
+                        <span class="item-value">${item['RENOVAÇÃO (90 DIAS)'] || '-'}</span>
+                    </div>
+                    <div class="item">
+                        <span class="item-label">Última Fatura</span>
+                        <span class="item-value">${item['ÚLTIMA FATURA PAGA'] || '-'}</span>
+                    </div>
+                    <div class="item">
+                        <span class="item-label">Valor Mensal</span>
+                        <span class="item-value">R$ ${item['VALOR MÉDIO MENSAL'] || '0,00'}</span>
+                    </div>
                 </div>
-                
-                <div class="data-row">
-                    <span class="label-text">Renovação (90 dias)</span>
-                    <span class="value-text">${(item['RENOVAÇÃO (90 DIAS)'] || '-').replace(/\n/g, '<br>')}</span>
-                </div>
-                
-                <div class="data-row">
-                    <span class="label-text">Valor Médio Mensal</span>
-                    <span class="value-text">R$ ${item['VALOR MÉDIO MENSAL'] || '0,00'}</span>
-                </div>
-                
-                <div class="data-row">
-                    <span class="label-text">Última Fatura Paga</span>
-                    <span class="value-text">${item['ÚLTIMA FATURA PAGA'] || '-'}</span>
-                </div>
-                
-                <div class="data-row" style="border:none">
-                    <span class="label-text" style="color:var(--accent)">Saldo</span>
-                    <span class="value-text" style="color:var(--accent); font-weight:bold">R$ ${item['SALDO'] || '0,00'}</span>
+
+                <div class="saldo-container">
+                    <div class="saldo-header">
+                        <span style="font-size: 0.7rem; color: var(--text-s)">SALDO RESTANTE</span>
+                        <span style="color: var(--accent)">R$ ${item.SALDO || '0,00'}</span>
+                    </div>
+                    <div class="saldo-bar">
+                        <div class="saldo-fill" style="width: ${Math.min((saldoNum / (valorMensal * 12)) * 100, 100)}%; 
+                             background: ${emAlerta ? 'var(--danger)' : 'var(--success)'}"></div>
+                    </div>
                 </div>
             `;
             resultsDiv.appendChild(card);
         });
     }
 
-    // Inicia o processo
-    carregarDados();
+    init();
 </script>
 
 </body>
