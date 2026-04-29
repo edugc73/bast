@@ -52,14 +52,21 @@
 
         .logo-area h1 { 
             margin: 0; 
-            font-size: 1.25rem; 
-            background: linear-gradient(90deg, #fff, var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 0.75rem; 
+            color: var(--text-muted);
             font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
         
-        #nomeConta { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; }
+        #nomeConta { 
+            font-size: 1.2rem; 
+            color: var(--accent); 
+            font-weight: 700;
+            margin-top: 6px;
+            line-height: 1.2;
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
 
         .controls { display: flex; gap: 12px; }
 
@@ -72,6 +79,7 @@
             cursor: pointer;
             outline: none;
             font-family: inherit;
+            font-size: 0.9rem;
         }
 
         select:hover { border-color: var(--accent); background: rgba(30, 41, 59, 1); }
@@ -156,6 +164,7 @@
             header { flex-direction: column; gap: 20px; text-align: center; }
             .controls { width: 100%; }
             select { flex: 1; }
+            #nomeConta { font-size: 1rem; }
         }
     </style>
 </head>
@@ -165,7 +174,7 @@
     <header>
         <div class="logo-area">
             <h1>EI_SREG ANALYTICS</h1>
-            <div id="nomeConta">Sincronizando...</div>
+            <div id="nomeConta">Sincronizando descrições...</div>
         </div>
         <div class="controls">
             <select id="mesSelect"></select>
@@ -181,23 +190,23 @@
         <div class="card alt">
             <h3>Consumo 2025</h3>
             <div class="value-wrapper">
-                <p id="txt2025">0.00</p>
+                <p id="txt2025">0,00</p>
                 <span class="delta" id="deltaLabel">--</span>
             </div>
         </div>
         <div class="card">
             <h3>Consumo 2026</h3>
             <div class="value-wrapper">
-                <p id="txt2026" style="color: var(--accent)">0.00</p>
+                <p id="txt2026" style="color: var(--accent)">0,00</p>
             </div>
         </div>
         <div class="card alt">
             <h3>Média Anual 2025</h3>
-            <p id="avg2025">0.00</p>
+            <p id="avg2025">0,00</p>
         </div>
         <div class="card">
             <h3>Média Anual 2026</h3>
-            <p id="avg2026" style="color: var(--accent)">0.00</p>
+            <p id="avg2026" style="color: var(--accent)">0,00</p>
         </div>
     </div>
 
@@ -209,14 +218,14 @@
 
     <div id="status-bar">
         <span class="dot"></span>
-        <span id="statusText">Conectando ao Google Sheets...</span>
+        <span id="statusText">Aguardando dados...</span>
     </div>
 </div>
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1730796342&single=true&output=csv'; 
     
-    let db = { meses: [], dados: {} };
+    let db = { meses: [], dados: {}, nomesContas: { "16": "", "21": "", "22": "" } };
     let myChart = null;
 
     function parseVal(v) {
@@ -225,6 +234,11 @@
         let clean = text.replace(/\./g, '').replace(',', '.');
         let num = parseFloat(clean);
         return isNaN(num) ? 0 : num;
+    }
+
+    // Função utilitária para tratar o split de CSV com suporte a vírgulas dentro de aspas
+    function splitCSV(line) {
+        return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
     }
 
     async function loadData() {
@@ -236,11 +250,23 @@
             db.meses = [];
             db.dados = {};
 
+            // EXTRAÇÃO DOS NOMES DAS CONTAS
+            // Linha 1 (index 0) costuma ser o ID da conta (ex: CONTA 16)
+            // Linha 2 (index 1) é onde agora reside a descrição (ex: MATERIAL DE EXPEDIENTE)
+            const row1 = splitCSV(lines[0]);
+            const row2 = splitCSV(lines[1]);
+            
+            // Montagem do nome: "CONTA X - DESCRIÇÃO DA LINHA 2"
+            db.nomesContas["16"] = `${row1[1] || 'CONTA 16'} - ${row2[1] || 'MATERIAL DE EXPEDIENTE'}`;
+            db.nomesContas["21"] = `${row1[3] || 'CONTA 21'} - ${row2[3] || 'MATERIAL DE COPA E COZINHA'}`;
+            db.nomesContas["22"] = `${row1[5] || 'CONTA 22'} - ${row2[5] || 'MATERIAL DE LIMPEZA'}`;
+
+            // Processamento dos dados mensais (inicia na linha 3 / index 2)
             for (let i = 2; i < lines.length; i++) {
-                const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/"/g, ''));
-                if(!c[0] || c[0].trim() === "" || c[0].includes("MESES")) continue;
+                const c = splitCSV(lines[i]);
+                if(!c[0] || c[0].toUpperCase().includes("MESES") || c[0] === "") continue;
                 
-                const mes = c[0].trim().toUpperCase();
+                const mes = c[0].toUpperCase();
                 db.meses.push(mes);
                 
                 db.dados[mes] = {
@@ -254,9 +280,10 @@
             selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
             
             updateUI();
-            document.getElementById('statusText').innerText = "Dados Sincronizados";
+            document.getElementById('statusText').innerText = "Dashboard Atualizado";
         } catch (e) {
-            document.getElementById('statusText').innerText = "Erro na conexão";
+            console.error(e);
+            document.getElementById('statusText').innerText = "Erro na sincronização";
             document.querySelector('.dot').style.background = "var(--danger)";
         }
     }
@@ -266,26 +293,24 @@
         let count = 0;
         db.meses.forEach(mes => {
             const val = db.dados[mes][contaId][yearKey];
-            if(val > 0) { // Opcional: considerar apenas meses com dados
-                total += val;
-                count++;
-            }
+            if(val > 0) { total += val; count++; }
         });
         return count > 0 ? (total / 12).toFixed(2) : "0.00";
     }
 
     function updateUI() {
+        if (!db.meses.length) return;
+
         const mes = document.getElementById('mesSelect').value;
         const conta = document.getElementById('contaSelect').value;
         const info = db.dados[mes][conta];
         
-        document.getElementById('nomeConta').innerText = `Monitorando Conta Energética #${conta}`;
+        // Atualiza o display com a concatenação da Linha 1 e Linha 2
+        document.getElementById('nomeConta').innerText = db.nomesContas[conta];
         
-        // Formatação com animação simples de número (opcional)
         document.getElementById('txt2025').innerText = info.v25.toLocaleString('pt-BR', {minimumFractionDigits: 2});
         document.getElementById('txt2026').innerText = info.v26.toLocaleString('pt-BR', {minimumFractionDigits: 2});
 
-        // Cálculo de Variação (Delta)
         const deltaLabel = document.getElementById('deltaLabel');
         if (info.v25 > 0) {
             const diff = ((info.v26 - info.v25) / info.v25) * 100;
@@ -297,15 +322,14 @@
             deltaLabel.style.display = 'none';
         }
 
-        document.getElementById('avg2025').innerText = calculateFullAverage(conta, 'v25');
-        document.getElementById('avg2026').innerText = calculateFullAverage(conta, 'v26');
+        document.getElementById('avg2025').innerText = parseFloat(calculateFullAverage(conta, 'v25')).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+        document.getElementById('avg2026').innerText = parseFloat(calculateFullAverage(conta, 'v26')).toLocaleString('pt-BR', {minimumFractionDigits: 2});
 
         updateChart(conta);
     }
 
     function updateChart(contaId) {
         const ctx = document.getElementById('mainChart').getContext('2d');
-        
         const data25 = db.meses.map(m => db.dados[m][contaId].v25);
         const data26 = db.meses.map(m => db.dados[m][contaId].v26);
         const avg26 = calculateFullAverage(contaId, 'v26');
@@ -318,30 +342,25 @@
                 labels: db.meses,
                 datasets: [
                     {
-                        label: '2026 (Atual)',
+                        label: 'Consumo 2026',
                         data: data26,
                         backgroundColor: 'rgba(56, 189, 248, 0.8)',
-                        borderColor: '#38bdf8',
-                        borderWidth: 0,
                         borderRadius: 8,
                         order: 2
                     },
                     {
-                        label: '2025 (Ref)',
+                        label: 'Consumo 2025',
                         data: data25,
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderColor: 'rgba(255, 255, 255, 0.2)',
-                        borderWidth: 1,
                         borderRadius: 8,
                         order: 3
                     },
                     {
-                        label: 'Média 2026',
+                        label: 'Média Anual 2026',
                         data: Array(db.meses.length).fill(avg26),
                         type: 'line',
                         borderColor: 'rgba(56, 189, 248, 0.4)',
                         borderDash: [5, 5],
-                        borderWidth: 2,
                         pointRadius: 0,
                         fill: false,
                         order: 1
@@ -354,34 +373,12 @@
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: { 
-                            color: '#94a3b8',
-                            font: { family: "'Plus Jakarta Sans'", size: 12 },
-                            usePointStyle: true,
-                            padding: 20
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleFont: { size: 14, weight: 'bold' },
-                        padding: 12,
-                        cornerRadius: 12,
-                        displayColors: true
+                        labels: { color: '#94a3b8', font: { family: "'Plus Jakarta Sans'", size: 12 } }
                     }
                 },
                 scales: {
-                    y: {
-                        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
-                        ticks: { color: '#64748b', font: { size: 11 } }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#64748b', font: { size: 11 } }
-                    }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                    x: { grid: { display: false }, ticks: { color: '#64748b' } }
                 }
             }
         });
@@ -390,7 +387,6 @@
     document.getElementById('mesSelect').onchange = updateUI;
     document.getElementById('contaSelect').onchange = updateUI;
     
-    // Inicialização
     window.onload = loadData;
 </script>
 </body>
