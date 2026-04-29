@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Impressoras BAST - Mensal</title>
+    <title>Dashboard Impressoras BAST - Inteligência de Dados</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0a192f;
@@ -14,59 +15,78 @@
             --text-dim: #8892b0;
             --accent: #64ffda;
             --border: #233554;
+            --danger: #ff4d4d;
+            --success: #64ffda;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            margin: 0; padding: 20px;
+            font-family: 'Inter', sans-serif;
+            padding: 20px;
             display: flex; flex-direction: column; align-items: center;
         }
 
-        .container { width: 100%; max-width: 1000px; }
+        .container { width: 100%; max-width: 1100px; }
         header { text-align: center; margin-bottom: 30px; }
-        h1 { color: var(--accent); font-weight: 300; letter-spacing: 2px; }
+        h1 { color: var(--accent); font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; }
+        .status-badge { font-size: 0.7rem; color: var(--accent); border: 1px solid var(--accent); padding: 4px 12px; border-radius: 20px; text-transform: uppercase; }
 
         .filter-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             background: var(--card-bg);
-            padding: 20px; border-radius: 12px;
+            padding: 25px; border-radius: 16px;
             border: 1px solid var(--border);
             margin-bottom: 25px;
+            align-items: end;
         }
 
-        .filter-group { display: flex; flex-direction: column; align-items: center; }
+        .filter-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 8px; color: var(--text-dim); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
 
         select {
-            background: #0a192f; color: var(--accent);
-            border: 1px solid var(--accent);
-            padding: 10px 15px; border-radius: 6px;
-            font-size: 1rem; width: 100%; outline: none;
+            background: #0d1b33; color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 12px; border-radius: 8px;
+            font-size: 0.95rem; width: 100%; outline: none;
+            transition: all 0.3s;
             cursor: pointer;
         }
+        select:focus { border-color: var(--accent); background: #112240; }
 
         .info-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px; margin-bottom: 30px;
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px; margin-bottom: 25px;
         }
 
         .card {
             background: var(--card-bg); padding: 20px;
-            border-radius: 10px; border: 1px solid var(--border);
-            text-align: center;
+            border-radius: 12px; border: 1px solid var(--border);
+            position: relative; overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-3px); border-color: var(--border); }
+        
+        .card-label { color: var(--text-dim); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; }
+        .card-value { font-size: 1.4rem; font-weight: 700; margin-bottom: 5px; }
+        .trend { font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .trend.up { color: var(--danger); }
+        .trend.down { color: var(--success); }
+
+        .chart-box {
+            background: var(--card-bg); padding: 25px;
+            border-radius: 16px; border: 1px solid var(--border);
+            height: 400px; width: 100%;
         }
 
-        .card-label { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 10px; display: block; }
-        .card-value { font-size: 1.3rem; font-weight: bold; }
-        .accent-val { color: var(--accent); }
-
-        .chart-container {
-            background: var(--card-bg); padding: 20px;
-            border-radius: 12px; border: 1px solid var(--border);
-            height: 350px;
+        @media (max-width: 600px) {
+            .info-grid { grid-template-columns: 1fr 1fr; }
+            .card-value { font-size: 1.1rem; }
         }
     </style>
 </head>
@@ -74,33 +94,50 @@
 
 <div class="container">
     <header>
-        <h1>Consumo de Impressoras - BAST</h1>
-        <p id="status" style="font-size: 0.8rem; color: var(--text-dim);">Conectando à planilha...</p>
+        <h1>Consumo Impressoras BAST</h1>
+        <span id="status" class="status-badge">Sincronizando...</span>
     </header>
 
     <div class="filter-container">
         <div class="filter-group">
-            <label style="margin-bottom:8px; color:var(--text-dim); font-size:0.8rem;">1. SELECIONE A IMPRESSORA</label>
+            <label>1. Selecionar Equipamento</label>
             <select id="printerSelect" onchange="updateDashboard()">
-                <option value="">Carregando...</option>
+                <option value="all">-- Todos os Equipamentos --</option>
             </select>
         </div>
         <div class="filter-group">
-            <label style="margin-bottom:8px; color:var(--text-dim); font-size:0.8rem;">2. SELECIONE O MÊS</label>
-            <select id="monthSelect" onchange="updateDashboard()">
-                </select>
+            <label>2. Mês de Referência</label>
+            <select id="monthSelect" onchange="updateDashboard()"></select>
         </div>
     </div>
 
-    <div class="info-grid">
-        <div class="card"><span class="card-label">Impressões no Mês</span><div id="valImp" class="card-value">-</div></div>
-        <div class="card"><span class="card-label">Valor Variável</span><div id="valVar" class="card-value">-</div></div>
-        <div class="card"><span class="card-label">Valor Mensal (Fixo)</span><div id="valFix" class="card-value">-</div></div>
-        <div class="card"><span class="card-label">Total do Mês</span><div id="valTotal" class="card-value accent-val">-</div></div>
-    </div>
+    <div id="dashboardContent">
+        <div class="info-grid">
+            <div class="card">
+                <span class="card-label">Volume de Impressões</span>
+                <div id="valImp" class="card-value">-</div>
+                <div id="trendImp" class="trend"></div>
+            </div>
+            <div class="card">
+                <span class="card-label">Valor Variável (Extra)</span>
+                <div id="valVar" class="card-value">-</div>
+                <div id="trendVar" class="trend"></div>
+            </div>
+            <div class="card">
+                <span class="card-label">Valor Mensal (Fixo)</span>
+                <div id="valFix" class="card-value">-</div>
+                <div id="trendFix" class="trend"></div>
+            </div>
+            <div class="card" style="border-color: rgba(100, 255, 218, 0.3)">
+                <span class="card-label" style="color: var(--accent)">Investimento Total</span>
+                <div id="valTotal" class="card-value" style="color: var(--accent)">-</div>
+                <div id="trendTotal" class="trend"></div>
+            </div>
+        </div>
 
-    <div class="chart-container">
-        <canvas id="mainChart"></canvas>
+        <div class="chart-box">
+            <canvas id="mainChart"></canvas>
+        </div>
     </div>
 </div>
 
@@ -118,9 +155,8 @@
             header: false,
             complete: (results) => {
                 rows = results.data;
-                
-                // Mapeia Impressoras (Linha 1 da planilha)
                 const headerRow = rows[1];
+                
                 printers = [];
                 for(let i = 1; i < headerRow.length; i += 4) {
                     if(headerRow[i] && headerRow[i].trim() !== "") {
@@ -128,21 +164,24 @@
                     }
                 }
 
-                // Mapeia Meses (Coluna 0, a partir da linha 3)
                 months = [];
                 for(let i = 3; i < rows.length; i++) {
-                    if(rows[i][0]) months.push(rows[i][0]);
+                    if(rows[i][0] && rows[i][0].trim() !== "") months.push(rows[i][0]);
                 }
 
                 popularDropdowns();
-                document.getElementById('status').innerText = "Dados Sincronizados";
+                document.getElementById('status').innerText = "Dados Operacionais";
+                updateDashboard();
             }
         });
     }
 
     function popularDropdowns() {
         const pSelect = document.getElementById('printerSelect');
-        pSelect.innerHTML = '<option value="">-- Escolha --</option>';
+        const mSelect = document.getElementById('monthSelect');
+        
+        // Populate Printers
+        pSelect.innerHTML = '<option value="all">-- Todos os Equipamentos --</option>';
         printers.forEach((p, idx) => {
             const opt = document.createElement('option');
             opt.value = idx;
@@ -150,92 +189,138 @@
             pSelect.appendChild(opt);
         });
 
-        const mSelect = document.getElementById('monthSelect');
+        // Populate Months
         mSelect.innerHTML = '';
-        months.forEach(m => {
+        months.forEach((m, idx) => {
             const opt = document.createElement('option');
             opt.value = m;
             opt.textContent = m;
-            // Define o mês atual como padrão se quiser (opcional)
+            if(idx === months.length - 1) opt.selected = true;
             mSelect.appendChild(opt);
         });
     }
 
     function updateDashboard() {
-        const printerIdx = document.getElementById('printerSelect').value;
-        const selectedMonth = document.getElementById('monthSelect').value;
-        
-        if(printerIdx === "") return;
+        const pIdx = document.getElementById('printerSelect').value;
+        const selMonth = document.getElementById('monthSelect').value;
+        const mIdx = months.indexOf(selMonth);
 
-        const selectedPrinter = printers[printerIdx];
-        const colStart = selectedPrinter.index;
+        let currentData = { imp: 0, var: 0, fix: 0, total: 0 };
+        let prevData = { imp: 0, var: 0, fix: 0, total: 0 };
+        let historyLabels = months;
+        let historyValues = new Array(months.length).fill(0);
 
-        let monthlyImp = 0, monthlyVar = 0, monthlyFix = 0, monthlyTotal = 0;
-        let chartLabels = [], chartData = [];
+        if(pIdx === "all") {
+            for(let i = 0; i < months.length; i++) {
+                printers.forEach(p => {
+                    const row = rows[i + 3];
+                    const val = parseInt(row[p.index]) || 0;
+                    historyValues[i] += val;
+                    
+                    if(i === mIdx) {
+                        currentData.imp += val;
+                        currentData.var += parseCurrency(row[p.index + 1]);
+                        currentData.fix += parseCurrency(row[p.index + 2]);
+                    }
+                    if(mIdx > 0 && i === mIdx - 1) {
+                        prevData.imp += val;
+                        prevData.var += parseCurrency(row[p.index + 1]);
+                        prevData.fix += parseCurrency(row[p.index + 2]);
+                    }
+                });
+            }
+        } else {
+            const p = printers[pIdx];
+            for(let i = 0; i < months.length; i++) {
+                const row = rows[i + 3];
+                const val = parseInt(row[p.index]) || 0;
+                historyValues[i] = val;
 
-        // Percorre as linhas para preencher o gráfico e pegar o mês selecionado
-        for(let i = 3; i < rows.length; i++) {
-            const row = rows[i];
-            const mes = row[0];
-            if(!mes) continue;
-
-            const imp = parseInt(row[colStart]) || 0;
-            chartLabels.push(mes);
-            chartData.push(imp);
-
-            // Se for o mês selecionado, guarda os valores para os cards
-            if(mes === selectedMonth) {
-                monthlyImp = imp;
-                monthlyVar = parseCurrency(row[colStart + 1]);
-                monthlyFix = parseCurrency(row[colStart + 2]);
-                monthlyTotal = monthlyVar + monthlyFix;
+                if(i === mIdx) {
+                    currentData.imp = val;
+                    currentData.var = parseCurrency(row[p.index + 1]);
+                    currentData.fix = parseCurrency(row[p.index + 2]);
+                }
+                if(mIdx > 0 && i === mIdx - 1) {
+                    prevData.imp = val;
+                    prevData.var = parseCurrency(row[p.index + 1]);
+                    prevData.fix = parseCurrency(row[p.index + 2]);
+                }
             }
         }
 
-        // Atualizar Cards com dados do Mês
-        document.getElementById('valImp').innerText = monthlyImp.toLocaleString('pt-BR');
-        document.getElementById('valVar').innerText = formatCurrency(monthlyVar);
-        document.getElementById('valFix').innerText = formatCurrency(monthlyFix);
-        document.getElementById('valTotal').innerText = formatCurrency(monthlyTotal);
+        currentData.total = currentData.var + currentData.fix;
+        prevData.total = prevData.var + prevData.fix;
+        
+        // Atualiza Cards
+        document.getElementById('valImp').innerText = currentData.imp.toLocaleString('pt-BR');
+        document.getElementById('valVar').innerText = formatCurrency(currentData.var);
+        document.getElementById('valFix').innerText = formatCurrency(currentData.fix);
+        document.getElementById('valTotal').innerText = formatCurrency(currentData.total);
 
-        renderChart(chartLabels, chartData, selectedMonth);
+        // Atualiza Tendências
+        updateTrend('trendImp', currentData.imp, prevData.imp);
+        updateTrend('trendVar', currentData.var, prevData.var);
+        updateTrend('trendFix', currentData.fix, prevData.fix);
+        updateTrend('trendTotal', currentData.total, prevData.total);
+
+        renderChart(historyLabels, historyValues, selMonth);
+    }
+
+    function updateTrend(id, current, prev) {
+        const el = document.getElementById(id);
+        if(!prev || prev === 0) { el.innerHTML = ""; return; }
+        
+        const diff = ((current - prev) / prev) * 100;
+        const icon = diff > 0 ? "▲" : (diff < 0 ? "▼" : "=");
+        const cls = diff > 0 ? "up" : (diff < 0 ? "down" : "");
+        
+        // Para custos, queda (down) é sucesso (verde)
+        el.className = `trend ${cls}`;
+        el.innerHTML = `${icon} ${Math.abs(diff).toFixed(1)}% vs mês ant.`;
     }
 
     function parseCurrency(val) {
         if(!val) return 0;
-        return parseFloat(val.toString().replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+        let clean = val.toString().replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+        return parseFloat(clean) || 0;
     }
 
     function formatCurrency(val) {
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    function renderChart(labels, data, highlightedMonth) {
+    function renderChart(labels, data, highlighted) {
         const ctx = document.getElementById('mainChart').getContext('2d');
         if(chartInstance) chartInstance.destroy();
-
-        // Cria cores: a barra do mês selecionado fica mais brilhante
-        const backgroundColors = labels.map(m => m === highlightedMonth ? '#64ffda' : 'rgba(100, 255, 218, 0.2)');
 
         chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Impressões',
                     data: data,
-                    backgroundColor: backgroundColors,
+                    backgroundColor: labels.map(l => l === highlighted ? '#64ffda' : 'rgba(100, 255, 218, 0.1)'),
+                    borderColor: '#64ffda',
+                    borderWidth: 1,
                     borderRadius: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#233554' }, ticks: { color: '#8892b0' } },
-                    x: { grid: { display: false }, ticks: { color: '#8892b0' } }
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Consumo: ${context.parsed.y} impressões`
+                        }
+                    }
                 },
-                plugins: { legend: { display: false } }
+                scales: {
+                    y: { grid: { color: '#233554' }, ticks: { color: '#8892b0' } },
+                    x: { grid: { display: false }, ticks: { color: '#8892b0' } }
+                }
             }
         });
     }
