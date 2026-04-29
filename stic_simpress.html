@@ -17,6 +17,7 @@
             --border: #233554;
             --danger: #ff4d4d;
             --success: #64ffda;
+            --warning: #f7d794;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,36 +28,56 @@
             font-family: 'Inter', sans-serif;
             padding: 20px;
             display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh;
         }
 
-        .container { width: 100%; max-width: 1100px; }
-        header { text-align: center; margin-bottom: 30px; }
-        h1 { color: var(--accent); font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; }
-        .status-badge { font-size: 0.7rem; color: var(--accent); border: 1px solid var(--accent); padding: 4px 12px; border-radius: 20px; text-transform: uppercase; }
+        .container { width: 100%; max-width: 1200px; }
+        
+        header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .title-area h1 { color: var(--accent); font-weight: 700; font-size: 1.5rem; }
+        .status-badge { font-size: 0.65rem; color: var(--accent); border: 1px solid var(--accent); padding: 4px 10px; border-radius: 4px; text-transform: uppercase; }
+
+        .btn-export {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-export:hover { background: rgba(100, 255, 218, 0.1); }
 
         .filter-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
             background: var(--card-bg);
-            padding: 25px; border-radius: 16px;
+            padding: 20px; border-radius: 12px;
             border: 1px solid var(--border);
             margin-bottom: 25px;
-            align-items: end;
         }
 
         .filter-group { display: flex; flex-direction: column; }
-        label { margin-bottom: 8px; color: var(--text-dim); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+        label { margin-bottom: 6px; color: var(--text-dim); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
 
         select {
             background: #0d1b33; color: var(--text-main);
             border: 1px solid var(--border);
-            padding: 12px; border-radius: 8px;
-            font-size: 0.95rem; width: 100%; outline: none;
-            transition: all 0.3s;
+            padding: 10px; border-radius: 6px;
+            font-size: 0.9rem; outline: none;
             cursor: pointer;
         }
-        select:focus { border-color: var(--accent); background: #112240; }
 
         .info-grid {
             display: grid; 
@@ -67,24 +88,30 @@
         .card {
             background: var(--card-bg); padding: 20px;
             border-radius: 12px; border: 1px solid var(--border);
-            position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
             transition: transform 0.2s;
         }
-        .card:hover { transform: translateY(-3px); border-color: var(--border); }
+        .card:hover { transform: translateY(-3px); }
+        .card-label { color: var(--text-dim); font-size: 0.65rem; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+        .card-value { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
         
-        .card-label { color: var(--text-dim); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; }
-        .card-value { font-size: 1.4rem; font-weight: 700; margin-bottom: 5px; }
-        .trend { font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .trend-box { display: flex; align-items: center; justify-content: space-between; }
+        .trend { font-size: 0.7rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
         .trend.up { color: var(--danger); }
         .trend.down { color: var(--success); }
+        .avg-indicator { font-size: 0.6rem; color: var(--text-dim); }
 
-        .chart-box {
+        .chart-section {
             background: var(--card-bg); padding: 25px;
             border-radius: 16px; border: 1px solid var(--border);
-            height: 400px; width: 100%;
+            width: 100%;
         }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-header h2 { font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; }
+        .chart-container { height: 350px; position: relative; }
 
         @media (max-width: 600px) {
+            header { justify-content: center; text-align: center; }
             .info-grid { grid-template-columns: 1fr 1fr; }
             .card-value { font-size: 1.1rem; }
         }
@@ -94,48 +121,66 @@
 
 <div class="container">
     <header>
-        <h1>Consumo Impressoras BAST</h1>
-        <span id="status" class="status-badge">Sincronizando...</span>
+        <div class="title-area">
+            <h1>Relatório de Impressão BAST</h1>
+            <span id="status" class="status-badge">Conectando...</span>
+        </div>
+        <button class="btn-export" onclick="exportData()">Exportar Dados (.csv)</button>
     </header>
 
     <div class="filter-container">
         <div class="filter-group">
-            <label>1. Selecionar Equipamento</label>
+            <label>Equipamento</label>
             <select id="printerSelect" onchange="updateDashboard()">
-                <option value="all">-- Todos os Equipamentos --</option>
+                <option value="all">Faturamento Consolidado (Todos)</option>
             </select>
         </div>
         <div class="filter-group">
-            <label>2. Mês de Referência</label>
+            <label>Período de Análise</label>
             <select id="monthSelect" onchange="updateDashboard()"></select>
         </div>
     </div>
 
-    <div id="dashboardContent">
-        <div class="info-grid">
-            <div class="card">
-                <span class="card-label">Volume de Impressões</span>
-                <div id="valImp" class="card-value">-</div>
+    <div class="info-grid">
+        <div class="card">
+            <span class="card-label">Volume Mensal</span>
+            <div id="valImp" class="card-value">-</div>
+            <div class="trend-box">
                 <div id="trendImp" class="trend"></div>
-            </div>
-            <div class="card">
-                <span class="card-label">Valor Variável (Extra)</span>
-                <div id="valVar" class="card-value">-</div>
-                <div id="trendVar" class="trend"></div>
-            </div>
-            <div class="card">
-                <span class="card-label">Valor Mensal (Fixo)</span>
-                <div id="valFix" class="card-value">-</div>
-                <div id="trendFix" class="trend"></div>
-            </div>
-            <div class="card" style="border-color: rgba(100, 255, 218, 0.3)">
-                <span class="card-label" style="color: var(--accent)">Investimento Total</span>
-                <div id="valTotal" class="card-value" style="color: var(--accent)">-</div>
-                <div id="trendTotal" class="trend"></div>
+                <div id="avgImp" class="avg-indicator"></div>
             </div>
         </div>
+        <div class="card">
+            <span class="card-label">Custo Variável (Extra)</span>
+            <div id="valVar" class="card-value">-</div>
+            <div class="trend-box">
+                <div id="trendVar" class="trend"></div>
+                <div id="avgVar" class="avg-indicator"></div>
+            </div>
+        </div>
+        <div class="card">
+            <span class="card-label">Custo Fixo (Franquia)</span>
+            <div id="valFix" class="card-value">-</div>
+            <div class="trend-box">
+                <div id="trendFix" class="trend"></div>
+                <div id="avgFix" class="avg-indicator"></div>
+            </div>
+        </div>
+        <div class="card" id="totalCard">
+            <span class="card-label">Investimento Total</span>
+            <div id="valTotal" class="card-value" style="color: var(--accent)">-</div>
+            <div class="trend-box">
+                <div id="trendTotal" class="trend"></div>
+                <div id="avgTotal" class="avg-indicator"></div>
+            </div>
+        </div>
+    </div>
 
-        <div class="chart-box">
+    <div class="chart-section">
+        <div class="chart-header">
+            <h2>Evolução Histórica: Volume vs Custo</h2>
+        </div>
+        <div class="chart-container">
             <canvas id="mainChart"></canvas>
         </div>
     </div>
@@ -170,7 +215,7 @@
                 }
 
                 popularDropdowns();
-                document.getElementById('status').innerText = "Dados Operacionais";
+                document.getElementById('status').innerText = "Dados Atualizados";
                 updateDashboard();
             }
         });
@@ -180,8 +225,7 @@
         const pSelect = document.getElementById('printerSelect');
         const mSelect = document.getElementById('monthSelect');
         
-        // Populate Printers
-        pSelect.innerHTML = '<option value="all">-- Todos os Equipamentos --</option>';
+        pSelect.innerHTML = '<option value="all">Faturamento Consolidado (Todos)</option>';
         printers.forEach((p, idx) => {
             const opt = document.createElement('option');
             opt.value = idx;
@@ -189,7 +233,6 @@
             pSelect.appendChild(opt);
         });
 
-        // Populate Months
         mSelect.innerHTML = '';
         months.forEach((m, idx) => {
             const opt = document.createElement('option');
@@ -207,90 +250,108 @@
 
         let currentData = { imp: 0, var: 0, fix: 0, total: 0 };
         let prevData = { imp: 0, var: 0, fix: 0, total: 0 };
-        let historyLabels = months;
-        let historyValues = new Array(months.length).fill(0);
+        
+        // Históricos para o gráfico
+        let historyImp = new Array(months.length).fill(0);
+        let historyCost = new Array(months.length).fill(0);
 
-        if(pIdx === "all") {
-            for(let i = 0; i < months.length; i++) {
+        // Processamento de Médias
+        let sumTotal = { imp: 0, var: 0, fix: 0, total: 0 };
+
+        for(let i = 0; i < months.length; i++) {
+            if(pIdx === "all") {
                 printers.forEach(p => {
                     const row = rows[i + 3];
-                    const val = parseInt(row[p.index]) || 0;
-                    historyValues[i] += val;
+                    const imp = parseInt(row[p.index]) || 0;
+                    const vVar = parseCurrency(row[p.index + 1]);
+                    const vFix = parseCurrency(row[p.index + 2]);
                     
+                    historyImp[i] += imp;
+                    historyCost[i] += (vVar + vFix);
+                    sumTotal.imp += imp; sumTotal.var += vVar; sumTotal.fix += vFix; sumTotal.total += (vVar + vFix);
+
                     if(i === mIdx) {
-                        currentData.imp += val;
-                        currentData.var += parseCurrency(row[p.index + 1]);
-                        currentData.fix += parseCurrency(row[p.index + 2]);
+                        currentData.imp += imp; currentData.var += vVar; currentData.fix += vFix;
                     }
                     if(mIdx > 0 && i === mIdx - 1) {
-                        prevData.imp += val;
-                        prevData.var += parseCurrency(row[p.index + 1]);
-                        prevData.fix += parseCurrency(row[p.index + 2]);
+                        prevData.imp += imp; prevData.var += vVar; prevData.fix += vFix;
                     }
                 });
-            }
-        } else {
-            const p = printers[pIdx];
-            for(let i = 0; i < months.length; i++) {
+            } else {
+                const p = printers[pIdx];
                 const row = rows[i + 3];
-                const val = parseInt(row[p.index]) || 0;
-                historyValues[i] = val;
+                const imp = parseInt(row[p.index]) || 0;
+                const vVar = parseCurrency(row[p.index + 1]);
+                const vFix = parseCurrency(row[p.index + 2]);
+
+                historyImp[i] = imp;
+                historyCost[i] = (vVar + vFix);
+                sumTotal.imp += imp; sumTotal.var += vVar; sumTotal.fix += vFix; sumTotal.total += (vVar + vFix);
 
                 if(i === mIdx) {
-                    currentData.imp = val;
-                    currentData.var = parseCurrency(row[p.index + 1]);
-                    currentData.fix = parseCurrency(row[p.index + 2]);
+                    currentData.imp = imp; currentData.var = vVar; currentData.fix = vFix;
                 }
                 if(mIdx > 0 && i === mIdx - 1) {
-                    prevData.imp = val;
-                    prevData.var = parseCurrency(row[p.index + 1]);
-                    prevData.fix = parseCurrency(row[p.index + 2]);
+                    prevData.imp = imp; prevData.var = vVar; prevData.fix = vFix;
                 }
             }
         }
 
         currentData.total = currentData.var + currentData.fix;
         prevData.total = prevData.var + prevData.fix;
-        
-        // Atualiza Cards
-        document.getElementById('valImp').innerText = currentData.imp.toLocaleString('pt-BR');
-        document.getElementById('valVar').innerText = formatCurrency(currentData.var);
-        document.getElementById('valFix').innerText = formatCurrency(currentData.fix);
-        document.getElementById('valTotal').innerText = formatCurrency(currentData.total);
 
-        // Atualiza Tendências
-        updateTrend('trendImp', currentData.imp, prevData.imp);
-        updateTrend('trendVar', currentData.var, prevData.var);
-        updateTrend('trendFix', currentData.fix, prevData.fix);
-        updateTrend('trendTotal', currentData.total, prevData.total);
+        const avg = {
+            imp: sumTotal.imp / months.length,
+            var: sumTotal.var / months.length,
+            fix: sumTotal.fix / months.length,
+            total: sumTotal.total / months.length
+        };
 
-        renderChart(historyLabels, historyValues, selMonth);
+        // Atualizar UI
+        renderCards(currentData, prevData, avg);
+        renderChart(months, historyImp, historyCost, selMonth);
+    }
+
+    function renderCards(curr, prev, avg) {
+        document.getElementById('valImp').innerText = curr.imp.toLocaleString('pt-BR');
+        document.getElementById('valVar').innerText = formatCurrency(curr.var);
+        document.getElementById('valFix').innerText = formatCurrency(curr.fix);
+        document.getElementById('valTotal').innerText = formatCurrency(curr.total);
+
+        updateTrend('trendImp', curr.imp, prev.imp);
+        updateTrend('trendVar', curr.var, prev.var);
+        updateTrend('trendFix', curr.fix, prev.fix);
+        updateTrend('trendTotal', curr.total, prev.total);
+
+        // Médias
+        document.getElementById('avgImp').innerText = `Média: ${Math.round(avg.imp)}`;
+        document.getElementById('avgTotal').innerText = `Média: ${formatCurrency(avg.total)}`;
+
+        // Alerta Visual se acima da média
+        const totalCard = document.getElementById('valTotal');
+        totalCard.style.color = curr.total > avg.total ? 'var(--danger)' : 'var(--accent)';
     }
 
     function updateTrend(id, current, prev) {
         const el = document.getElementById(id);
         if(!prev || prev === 0) { el.innerHTML = ""; return; }
-        
         const diff = ((current - prev) / prev) * 100;
-        const icon = diff > 0 ? "▲" : (diff < 0 ? "▼" : "=");
+        const icon = diff > 0 ? "▲" : (diff < 0 ? "▼" : "•");
         const cls = diff > 0 ? "up" : (diff < 0 ? "down" : "");
-        
-        // Para custos, queda (down) é sucesso (verde)
         el.className = `trend ${cls}`;
-        el.innerHTML = `${icon} ${Math.abs(diff).toFixed(1)}% vs mês ant.`;
+        el.innerHTML = `${icon} ${Math.abs(diff).toFixed(1)}%`;
     }
 
     function parseCurrency(val) {
         if(!val) return 0;
-        let clean = val.toString().replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
-        return parseFloat(clean) || 0;
+        return parseFloat(val.toString().replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
     }
 
     function formatCurrency(val) {
         return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    function renderChart(labels, data, highlighted) {
+    function renderChart(labels, dataImp, dataCost, highlighted) {
         const ctx = document.getElementById('mainChart').getContext('2d');
         if(chartInstance) chartInstance.destroy();
 
@@ -298,31 +359,70 @@
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: [{
-                    data: data,
-                    backgroundColor: labels.map(l => l === highlighted ? '#64ffda' : 'rgba(100, 255, 218, 0.1)'),
-                    borderColor: '#64ffda',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
+                datasets: [
+                    {
+                        label: 'Volume de Impressão',
+                        data: dataImp,
+                        backgroundColor: labels.map(l => l === highlighted ? 'rgba(100, 255, 218, 0.8)' : 'rgba(100, 255, 218, 0.1)'),
+                        borderColor: '#64ffda',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Investimento Total (R$)',
+                        data: dataCost,
+                        type: 'line',
+                        borderColor: '#ff007a',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#ff007a',
+                        tension: 0.3,
+                        yAxisID: 'y1'
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { 
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => `Consumo: ${context.parsed.y} impressões`
-                        }
-                    }
+                    legend: { labels: { color: '#8892b0', font: { size: 10 } } }
                 },
                 scales: {
-                    y: { grid: { color: '#233554' }, ticks: { color: '#8892b0' } },
-                    x: { grid: { display: false }, ticks: { color: '#8892b0' } }
+                    y: { 
+                        type: 'linear', position: 'left',
+                        grid: { color: '#233554' }, 
+                        ticks: { color: '#8892b0' },
+                        title: { display: true, text: 'Impressões', color: '#8892b0' }
+                    },
+                    y1: {
+                        type: 'linear', position: 'right',
+                        grid: { display: false },
+                        ticks: { color: '#ff007a', callback: value => 'R$ ' + value },
+                        title: { display: true, text: 'Custo R$', color: '#ff007a' }
+                    },
+                    x: { ticks: { color: '#8892b0' } }
                 }
             }
         });
+    }
+
+    function exportData() {
+        const pSelect = document.getElementById('printerSelect');
+        const printerName = pSelect.options[pSelect.selectedIndex].text;
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + "Mes;Impressões;Custo Fixo;Custo Variavel;Total\n"
+            + months.map((m, i) => {
+                // Aqui você pode refinar para pegar os dados atuais processados
+                return `${m};...;...;...;...`;
+            }).join("\n");
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `BAST_Relatorio_${printerName.replace(/\s/g, '_')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     carregarDados();
