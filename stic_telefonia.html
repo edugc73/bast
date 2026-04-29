@@ -5,91 +5,152 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Custos com Telefonia - BAST</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
-        .card-dark { background-color: #1e293b; border: 1px solid #334155; }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; scroll-behavior: smooth; }
+        .card-dark { background-color: #1e293b; border: 1px solid #334155; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-dark:hover { border-color: #38bdf8; transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
         .accent-blue { color: #38bdf8; }
         .bg-accent-blue { background-color: #0369a1; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
         .loader {
             border: 3px solid #1e293b;
             border-radius: 50%;
             border-top: 3px solid #38bdf8;
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .progress-bar { height: 4px; border-radius: 2px; background: #334155; overflow: hidden; margin-top: 8px; }
+        .progress-fill { height: 100%; background: #38bdf8; transition: width 1s ease-out; }
     </style>
 </head>
 <body class="text-slate-200 min-h-screen">
 
-    <div class="max-w-6xl mx-auto p-4 md:p-8">
+    <div class="max-w-7xl mx-auto p-4 md:p-8">
         <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
-            <div>
-                <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-900/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    Telefonia BAST
-                </h1>
-                <p class="text-slate-400 text-sm font-semibold tracking-widest uppercase mt-1">Controle de Custos de Telefonia</p>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-extrabold text-white tracking-tight">Telefonia BAST</h1>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">Gestão Estratégica de Custos</p>
+                </div>
             </div>
 
-            <!-- Botões de Seleção -->
-            <div class="inline-flex bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700 shadow-2xl">
-                <button id="btnMovel" onclick="switchCategory('MOVIL')" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 bg-blue-600 text-white shadow-lg">
-                    TELEFONIA MÓVEL
-                </button>
-                <button id="btnFixo" onclick="switchCategory('FIXO')" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 text-slate-400 hover:text-white">
-                    VIVO FIXO
-                </button>
+            <div class="flex flex-col sm:flex-row w-full lg:w-auto gap-4">
+                <!-- Search -->
+                <div class="relative flex-grow sm:w-64">
+                    <input type="text" id="searchInput" oninput="handleFilter()" placeholder="Buscar responsável ou linha..." 
+                           class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute right-3 top-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+
+                <!-- Botões de Seleção -->
+                <div class="inline-flex bg-slate-800/50 p-1 rounded-xl border border-slate-700 shadow-xl">
+                    <button id="btnMovel" onclick="switchCategory('MOVIL')" class="px-5 py-2 rounded-lg text-xs font-bold transition-all duration-300">
+                        MÓVEL
+                    </button>
+                    <button id="btnFixo" onclick="switchCategory('FIXO')" class="px-5 py-2 rounded-lg text-xs font-bold transition-all duration-300">
+                        FIXO
+                    </button>
+                </div>
             </div>
         </header>
 
-        <!-- Loading / Error States -->
-        <div id="loadingState" class="flex flex-col items-center justify-center py-20">
-            <div class="loader mb-4"></div>
-            <p class="text-slate-400 animate-pulse">Sincronizando com a base de dados...</p>
+        <!-- Loading -->
+        <div id="loadingState" class="flex flex-col items-center justify-center py-32">
+            <div class="loader mb-6"></div>
+            <p class="text-slate-400 font-medium animate-pulse">Processando dados financeiros...</p>
         </div>
 
-        <div id="mainContent" class="hidden">
-            <!-- Estatísticas -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-                <div class="card-dark p-6 rounded-3xl shadow-xl flex items-center gap-6">
-                    <div class="bg-blue-500/10 p-4 rounded-2xl">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <!-- Main Content -->
+        <div id="mainContent" class="hidden space-y-8">
+            
+            <!-- Dashboard Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Total Card -->
+                <div class="card-dark p-6 rounded-3xl relative overflow-hidden group">
+                    <div class="relative z-10">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Investimento Total</p>
+                        <h2 id="totalValue" class="text-4xl font-black text-white">R$ 0,00</h2>
+                        <div class="flex gap-4 mt-4 text-[10px] font-bold uppercase text-slate-500">
+                            <span id="taxValue">Tributos: R$ 0,00</span>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <div>
-                        <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Valor Total da Categoria</p>
-                        <h2 id="totalValue" class="text-4xl font-black text-white">R$ 0,00</h2>
-                    </div>
                 </div>
 
-                <div class="card-dark p-6 rounded-3xl shadow-xl flex items-center gap-6">
-                    <div class="bg-emerald-500/10 p-4 rounded-2xl">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <!-- Lines Card -->
+                <div class="card-dark p-6 rounded-3xl relative overflow-hidden group">
+                    <div class="relative z-10">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Ativos Operacionais</p>
+                        <h2 id="totalLines" class="text-4xl font-black text-white">0</h2>
+                        <p id="avgPerLine" class="text-slate-500 text-[10px] font-bold uppercase mt-4">Média: R$ 0,00 / linha</p>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity text-emerald-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
                     </div>
-                    <div>
-                        <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total de Linhas</p>
-                        <h2 id="totalLines" class="text-4xl font-black text-white">0</h2>
+                </div>
+
+                <!-- Sort/Quick Analysis -->
+                <div class="card-dark p-6 rounded-3xl">
+                    <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">Análise e Ordenação</p>
+                    <div class="space-y-3">
+                        <select id="sortSelect" onchange="handleFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold focus:outline-none">
+                            <option value="highest">Maior Custo Primeiro</option>
+                            <option value="lowest">Menor Custo Primeiro</option>
+                            <option value="name">Nome (A-Z)</option>
+                        </select>
+                        <div class="flex justify-between items-center text-[10px] font-bold uppercase text-slate-500 px-1">
+                            <span>Visualizando:</span>
+                            <span id="showingCount" class="text-blue-400">0 itens</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Lista de Cartões -->
+            <!-- List Section -->
             <div id="cardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 <!-- Inserido via JS -->
             </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden flex flex-col items-center py-20 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p>Nenhum registro encontrado para essa busca.</p>
+            </div>
         </div>
 
-        <footer class="mt-16 text-center text-slate-500 text-[10px] uppercase tracking-[0.2em] border-t border-slate-800 pt-8">
-            BAST • Atualizado em tempo real via Google Sheets API
+        <footer class="mt-20 mb-10 text-center space-y-4">
+            <div class="text-slate-600 text-[10px] uppercase tracking-[0.3em]">
+                Sistema de Gestão BAST &bull; Controle de Faturas v2.0
+            </div>
+            <div class="flex justify-center gap-6 opacity-30 grayscale">
+                <!-- Placeholder para logos de operadoras se necessário -->
+            </div>
         </footer>
     </div>
 
@@ -135,94 +196,131 @@
                 dataStore.fixo = [];
 
                 rows.forEach((row, idx) => {
-                    if (idx < 3) return; // Pula cabeçalhos
+                    if (idx < 3) return;
 
-                    // Telefonia Móvel (Colunas 0, 1, 2)
-                    const resM = row[0];
-                    if (resM && resM !== 'RESPONSÁVEL' && resM !== 'TOTAL') {
+                    // Móvel (0, 1, 2)
+                    if (row[0] && row[0] !== 'RESPONSÁVEL' && row[0] !== 'TOTAL') {
                         const val = cleanNumeric(row[2]);
                         if (val > 0) {
-                            // Verifica se é uma linha real (não é tributo/imposto)
-                            const isTax = resM.toUpperCase().includes('RETENÇÃO') || resM.toUpperCase().includes('TRIBUTO');
-                            dataStore.movel.push({ nome: resM, linha: row[1] || 'N/A', valor: val, isLine: !isTax });
+                            const isTax = row[0].toUpperCase().includes('RETENÇÃO') || row[0].toUpperCase().includes('TRIBUTO') || row[0].toUpperCase().includes('IMPOSTO');
+                            dataStore.movel.push({ nome: row[0], linha: row[1] || 'N/A', valor: val, isTax });
                         }
                     }
 
-                    // Vivo Fixo (Colunas 4, 5, 6)
-                    const resF = row[4];
-                    if (resF && resF !== 'RESPONSÁVEL' && resF !== 'TOTAL') {
+                    // Fixo (4, 5, 6)
+                    if (row[4] && row[4] !== 'RESPONSÁVEL' && row[4] !== 'TOTAL') {
                         const val = cleanNumeric(row[6]);
                         if (val > 0) {
-                            const isTax = resF.toUpperCase().includes('RETENÇÃO') || resF.toUpperCase().includes('TRIBUTO');
-                            dataStore.fixo.push({ 
-                                nome: resF, 
-                                linha: (row[5] || 'N/A').replace(/[\r\n]+/g, ' '), 
-                                valor: val,
-                                isLine: !isTax
-                            });
+                            const isTax = row[4].toUpperCase().includes('RETENÇÃO') || row[4].toUpperCase().includes('TRIBUTO') || row[4].toUpperCase().includes('IMPOSTO');
+                            dataStore.fixo.push({ nome: row[4], linha: (row[5] || 'N/A').replace(/[\r\n]+/g, ' '), valor: val, isTax });
                         }
                     }
                 });
 
-                render();
                 document.getElementById('loadingState').classList.add('hidden');
                 document.getElementById('mainContent').classList.remove('hidden');
+                render();
 
             } catch (err) {
                 console.error(err);
-                alert('Erro ao carregar dados. Verifique a conexão.');
+                document.getElementById('loadingState').innerHTML = `<p class="text-red-400">Erro ao carregar a base de dados. Tente atualizar a página.</p>`;
             }
         }
 
-        function render() {
-            const list = currentCategory === 'MOVIL' ? dataStore.movel : dataStore.fixo;
-            const container = document.getElementById('cardsContainer');
-            const totalDisplay = document.getElementById('totalValue');
-            const linesDisplay = document.getElementById('totalLines');
-
-            // Atualiza Botões
-            document.getElementById('btnMovel').className = currentCategory === 'MOVIL' 
-                ? 'px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-blue-600 text-white shadow-lg' 
-                : 'px-6 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white';
-            
-            document.getElementById('btnFixo').className = currentCategory === 'FIXO' 
-                ? 'px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-blue-600 text-white shadow-lg' 
-                : 'px-6 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-400 hover:text-white';
-
-            // Cálculos
-            const totalValue = list.reduce((acc, curr) => acc + curr.valor, 0);
-            const totalLines = list.filter(item => item.isLine).length;
-
-            totalDisplay.innerText = totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            linesDisplay.innerText = totalLines;
-
-            // Render Cards
-            container.innerHTML = list.map(item => `
-                <div class="card-dark p-5 rounded-3xl hover:border-blue-500/50 transition-all duration-300 group">
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="text-[10px] font-extrabold px-2 py-1 ${item.isLine ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-500/20 text-slate-400'} rounded-lg uppercase tracking-tighter">
-                            ${!item.isLine ? 'Tributo' : (currentCategory === 'MOVIL' ? 'Móvel' : 'Fixo')}
-                        </span>
-                        <span class="text-xl font-black text-white">
-                            ${item.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                    </div>
-                    <h3 class="font-bold text-slate-100 uppercase text-sm mb-1 group-hover:accent-blue transition-colors leading-tight">
-                        ${item.nome}
-                    </h3>
-                    <div class="flex items-center gap-1.5 text-slate-500 text-xs">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <span>${item.linha}</span>
-                    </div>
-                </div>
-            `).join('');
+        function handleFilter() {
+            render();
         }
 
         function switchCategory(cat) {
             currentCategory = cat;
+            document.getElementById('searchInput').value = '';
             render();
+        }
+
+        function render() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const sortBy = document.getElementById('sortSelect').value;
+            const container = document.getElementById('cardsContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            let list = currentCategory === 'MOVIL' ? [...dataStore.movel] : [...dataStore.fixo];
+
+            // 1. Cálculos de Topo (Baseados na lista completa da categoria)
+            const totalValue = list.reduce((acc, curr) => acc + curr.valor, 0);
+            const totalTax = list.filter(i => i.isTax).reduce((acc, curr) => acc + curr.valor, 0);
+            const lineItems = list.filter(i => !i.isTax);
+            const totalLines = lineItems.length;
+            const maxVal = Math.max(...list.map(i => i.valor), 1);
+
+            document.getElementById('totalValue').innerText = totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById('taxValue').innerText = `Tributos: ${totalTax.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+            document.getElementById('totalLines').innerText = totalLines;
+            document.getElementById('avgPerLine').innerText = `Média: ${(totalValue/Math.max(totalLines, 1)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} / linha`;
+
+            // 2. Filtro de Busca
+            if (searchTerm) {
+                list = list.filter(item => 
+                    item.nome.toLowerCase().includes(searchTerm) || 
+                    item.linha.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // 3. Ordenação
+            if (sortBy === 'highest') list.sort((a, b) => b.valor - a.valor);
+            else if (sortBy === 'lowest') list.sort((a, b) => a.valor - b.valor);
+            else if (sortBy === 'name') list.sort((a, b) => a.nome.localeCompare(b.nome));
+
+            // 4. Update UI
+            document.getElementById('showingCount').innerText = `${list.length} itens`;
+            
+            // Estilo dos botões
+            const activeClass = "bg-blue-600 text-white shadow-lg shadow-blue-900/40";
+            const inactiveClass = "text-slate-400 hover:text-white";
+            document.getElementById('btnMovel').className = `px-5 py-2 rounded-lg text-xs font-bold transition-all duration-300 ${currentCategory === 'MOVIL' ? activeClass : inactiveClass}`;
+            document.getElementById('btnFixo').className = `px-5 py-2 rounded-lg text-xs font-bold transition-all duration-300 ${currentCategory === 'FIXO' ? activeClass : inactiveClass}`;
+
+            if (list.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            container.innerHTML = list.map(item => {
+                const percent = (item.valor / maxVal) * 100;
+                return `
+                <div class="card-dark p-5 rounded-3xl flex flex-col justify-between group">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-[9px] font-black px-2 py-1 ${item.isTax ? 'bg-slate-700 text-slate-400' : 'bg-blue-500/10 text-blue-400'} rounded-md uppercase tracking-tighter">
+                                ${item.isTax ? 'Encargo/Tributo' : (currentCategory === 'MOVIL' ? 'Telefonia Móvel' : 'Vivo Fixo')}
+                            </span>
+                            <span class="text-lg font-bold text-white tracking-tight">
+                                ${item.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-slate-100 uppercase text-[13px] mb-1 group-hover:text-blue-400 transition-colors leading-tight min-h-[2em]">
+                            ${item.nome}
+                        </h3>
+                        <div class="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            <span>${item.linha}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <div class="flex justify-between text-[9px] uppercase font-bold text-slate-600 mb-1">
+                            <span>Relevância</span>
+                            <span>${Math.round(percent)}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
         }
 
         window.onload = init;
