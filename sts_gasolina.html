@@ -3,347 +3,359 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard EIE_SSG - Gonça (Aprimorado)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>Dashboard BAST - Controle de Gasolina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-body: #050a1a;
-            --bg-card: rgba(13, 27, 53, 0.95);
-            --accent: #00d2ff;
-            --accent-2: #ff007a;
-            --text: #ffffff;
-            --text-muted: #8892b0;
-            --pos: #00ff88; /* Verde para redução de custo */
-            --neg: #ff4d4d; /* Vermelho para aumento de custo */
-            --card-border: rgba(255,255,255,0.08);
+        body { font-family: 'Inter', sans-serif; background-color: #050a1a; color: #e2e8f0; }
+        .glass-card { 
+            background: rgba(30, 41, 59, 0.7); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
         }
-
-        body {
-            background-color: var(--bg-body);
-            color: var(--text);
-            font-family: 'Poppins', sans-serif;
-            margin: 0; padding: 20px; min-height: 100vh;
-            background: radial-gradient(circle at top right, #0a1f44, #050a1a);
-        }
-
-        .container { max-width: 1400px; margin: 0 auto; }
-
-        header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 20px 25px; background: var(--bg-card); border-radius: 15px;
-            margin-bottom: 25px; border: 1px solid var(--card-border);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-            flex-wrap: wrap; gap: 15px;
-        }
-
-        .logo-area { display: flex; flex-direction: column; }
-        .logo { font-weight: 700; font-size: 1.2rem; color: var(--accent); letter-spacing: 1px; }
-        #nomeConta { font-size: 0.9rem; color: var(--text-muted); margin-top: 5px; font-weight: 400; }
-
-        .controls { display: flex; gap: 15px; }
-        .controls select {
-            background: rgba(21, 37, 69, 0.8); color: white; border: 1px solid rgba(0, 210, 255, 0.3);
-            padding: 10px 15px; border-radius: 8px; cursor: pointer; font-family: 'Poppins', sans-serif;
-            outline: none; transition: border 0.3s;
-        }
-        .controls select:hover { border-color: var(--accent); }
-
-        .grid-cards {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px; margin-bottom: 25px;
-        }
-
-        .card {
-            background: var(--bg-card); padding: 20px; border-radius: 15px;
-            border: 1px solid var(--card-border); text-align: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-            display: flex; flex-direction: column; justify-content: center;
-            position: relative; overflow: hidden;
-        }
+        .accent-cyan { color: #22d3ee; }
+        .bg-accent-cyan { background-color: #0891b2; }
         
-        .card::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
-            background: linear-gradient(90deg, transparent, var(--accent), transparent);
-            opacity: 0.5;
+        select {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            outline: none;
+            min-width: 150px;
         }
-
-        .card.highlight::before { background: linear-gradient(90deg, transparent, var(--accent-2), transparent); }
-
-        .card.year-2025 {
-            background: rgba(8, 15, 30, 0.7); /* Fundo mais escuro para ano anterior */
-            border: 1px solid rgba(255, 255, 255, 0.03);
-        }
-
-        .card.year-2026 {
-            background: rgba(18, 38, 75, 0.85); /* Fundo com leve tom de azul para o ano atual */
-            border: 1px solid rgba(0, 210, 255, 0.15);
-        }
-
-        .card h3 { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 0 0 10px 0; letter-spacing: 0.5px;}
-        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; }
+        select:focus { border-color: #22d3ee; }
         
-        .badge {
-            font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; margin-top: 8px; display: inline-block; font-weight: 600;
+        .loader {
+            border: 3px solid #1e293b;
+            border-radius: 50%;
+            border-top: 3px solid #22d3ee;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
         }
-        .badge.up { background: rgba(255, 77, 77, 0.15); color: var(--neg); }
-        .badge.down { background: rgba(0, 255, 136, 0.15); color: var(--pos); }
-        .badge.neutral { background: rgba(255, 255, 255, 0.1); color: var(--text-muted); }
-
-        .charts-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
-        }
-
-        @media (max-width: 900px) {
-            .charts-grid { grid-template-columns: 1fr; }
-        }
-
-        .content-area {
-            background: var(--bg-card); padding: 20px; border-radius: 15px;
-            border: 1px solid var(--card-border); box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-        }
-        
-        .chart-title { font-size: 0.9rem; color: var(--text-muted); text-align: center; margin-bottom: 15px; font-weight: 600;}
-
-        canvas { width: 100% !important; height: 320px !important; }
-
-        #status { text-align: center; font-size: 0.8rem; color: var(--accent); margin-top: 25px; opacity: 0.8; font-weight: 300;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body>
+<body class="min-h-screen p-4 md:p-8">
 
-<div class="container">
-    <header>
-        <div class="logo-area">
-            <div class="logo">PRESTAÇÃO DE CONTAS EIE_SSG</div>
-            <div id="nomeConta">Carregando dados da planilha...</div>
-        </div>
-        <div class="controls">
-            <select id="mesSelect"></select>
-            <select id="contaSelect">
-                <option value="bast_agua">BAST - ÁGUA E ESGOTO</option>
-                <option value="bast_energia">BAST - ENERGIA ELÉTRICA</option>
-                <option value="cass_agua">CASS - ÁGUA E ESGOTO</option>
-                <option value="cass_energia">CASS - ENERGIA ELÉTRICA</option>
-            </select>
-        </div>
-    </header>
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+            <div>
+                <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    BAST - Controle de Combustível - Gasolina
+                </h1>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-[0.3em] mt-2">Dados em Tempo Real via Google Sheets</p>
+            </div>
 
-    <!-- Cards Reorganizados para maior clareza -->
-    <div class="grid-cards">
-        <!-- Financeiro -->
-        <div class="card year-2025">
-            <h3>Custo Mês (2025)</h3>
-            <p id="v2025" style="color: rgba(255,255,255,0.7)">R$ 0,00</p>
+            <div class="flex flex-wrap gap-4 items-center" id="filterControls" style="display: none;">
+                <div class="flex flex-col">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 ml-1">Mês de Referência</label>
+                    <select id="mesSelect" onchange="updateDashboard()">
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 ml-1">Métrica do Gráfico</label>
+                    <select id="metricSelect" onchange="updateDashboard()">
+                        <option value="consumo">Consumo Viaturas (L)</option>
+                        <option value="km">Quilometragem (KM)</option>
+                        <option value="total">Consumo Total (L)</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="flex flex-col items-center justify-center py-20">
+            <div class="loader mb-4"></div>
+            <p class="text-slate-400 animate-pulse uppercase text-xs tracking-widest">Carregando dados da planilha...</p>
         </div>
-        <div class="card highlight year-2026">
-            <h3>Custo Mês (2026)</h3>
-            <p id="v2026" style="color: var(--accent)">R$ 0,00</p>
-            <div id="varR$" class="badge neutral">0%</div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Seção de Controle Final -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="glass-card p-6 rounded-3xl shadow-2xl">
+                    <p class="text-slate-400 text-xs font-bold uppercase mb-2">Estoque Anterior</p>
+                    <h2 id="estoqueAnterior" class="text-4xl font-black text-white">0 L</h2>
+                    <div class="mt-2 text-[10px] text-slate-500 uppercase">Referente ao início do mês</div>
+                </div>
+                <div class="glass-card p-6 rounded-3xl shadow-2xl border-l-4 border-cyan-500">
+                    <p class="text-cyan-400 text-xs font-bold uppercase mb-2">Aquisição no Mês</p>
+                    <h2 id="aquisicao" class="text-4xl font-black text-white">0 L</h2>
+                    <div class="mt-2 text-[10px] text-slate-500 uppercase">Total de litros adquiridos</div>
+                </div>
+                <div class="glass-card p-6 rounded-3xl shadow-2xl bg-gradient-to-br from-slate-900 to-blue-900 border border-cyan-500/30">
+                    <p class="text-emerald-400 text-xs font-bold uppercase mb-2">Estoque Atual</p>
+                    <h2 id="estoqueAtual" class="text-5xl font-black text-white">0 L</h2>
+                    <div class="mt-2 text-[10px] text-emerald-500/50 uppercase">Saldo disponível em tanque</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Operacional -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+                <!-- Gráfico de Comparativo -->
+                <div class="lg:col-span-2 glass-card p-6 rounded-3xl min-h-[450px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-lg" id="chartTitle">Comparativo Anual</h3>
+                        <div id="chartLegend" class="flex gap-4 text-[10px] font-bold uppercase">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-slate-700 rounded"></span> 2025</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-cyan-400 rounded"></span> 2026</span>
+                        </div>
+                    </div>
+                    <div class="relative h-[350px]">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Detalhamento Dinâmico -->
+                <div class="glass-card p-6 rounded-3xl flex flex-col" id="detailPanel">
+                    <h3 class="font-bold text-lg mb-6">Detalhamento: <span id="mesNome" class="accent-cyan italic">Janeiro</span></h3>
+                    
+                    <!-- Este container será preenchido dinamicamente via JS -->
+                    <div id="detailContent" class="space-y-6 flex-grow">
+                    </div>
+
+                    <div id="efficiencyBox" class="mt-8 p-5 bg-cyan-500/10 rounded-2xl border border-cyan-500/20">
+                        <p class="text-[10px] text-cyan-300 font-bold uppercase mb-1 tracking-widest">Eficiência Viaturas (KM/L)</p>
+                        <p id="kmlMedio" class="text-3xl font-black text-white">0.00</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card year-2026">
-            <h3>Total Acumulado (2026)</h3>
-            <p id="t2026">R$ 0,00</p>
-            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">Soma de todos os meses de 2026</div>
-        </div>
+
+        <footer class="text-center text-slate-600 text-[10px] uppercase tracking-[0.4em] mt-12 pb-10 border-t border-slate-800/50 pt-8">
+            BAST • Gestão de Combustíveis • Dados Sincronizados
+        </footer>
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=90011052&single=true&output=csv';
         
-        <!-- Físico (Consumo) -->
-        <div class="card year-2025">
-            <h3>Consumo Mês (2025)</h3>
-            <p id="u2025" style="color: rgba(255,255,255,0.7)">0</p>
-        </div>
-        <div class="card highlight year-2026">
-            <h3>Consumo Mês (2026)</h3>
-            <p id="u2026" style="color: #ff007a">0</p>
-            <div id="varU" class="badge neutral">0%</div>
-        </div>
-        <div class="card year-2026">
-            <h3>Média Mensal R$ (2026)</h3>
-            <p id="m2026">R$ 0,00</p>
-            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">Considera apenas meses com valor</div>
-        </div>
-    </div>
+        let dieselData = {};
+        let myChart;
 
-    <!-- Área de Gráficos Duplos -->
-    <div class="charts-grid">
-        <div class="content-area">
-            <div class="chart-title">Comparativo de Custos (R$)</div>
-            <canvas id="financeChart"></canvas>
-        </div>
-        <div class="content-area">
-            <div class="chart-title">Comparativo de Consumo Físico</div>
-            <canvas id="unitChart"></canvas>
-        </div>
-    </div>
+        function parseCSV(str) {
+            const arr = [];
+            let quote = false;
+            for (let row = col = c = 0; c < str.length; c++) {
+                let cc = str[c], nc = str[c+1];
+                arr[row] = arr[row] || [];
+                arr[row][col] = arr[row][col] || "";
+                if (cc == '"' && quote && nc == '"') { arr[row][col] += cc; ++c; continue; }
+                if (cc == '"') { quote = !quote; continue; }
+                if (cc == ',' && !quote) { ++col; continue; }
+                if (cc == '\r' && nc == '\n' && !quote) { ++row; col = 0; ++c; continue; }
+                if (cc == '\n' && !quote) { ++row; col = 0; continue; }
+                if (cc == '\r' && !quote) { ++row; col = 0; continue; }
+                arr[row][col] += cc;
+            }
+            return arr;
+        }
 
-    <div id="status">Sincronizando com Google Sheets...</div>
-</div>
+        function cleanVal(val) {
+            if (!val) return 0;
+            return parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
+        }
 
-<script>
-    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1151743352&single=true&output=csv'; 
-    let db = { meses: [], dados: {} };
-    let financeChart = null;
-    let unitChart = null;
+        async function loadData() {
+            try {
+                const response = await fetch(CSV_URL);
+                const text = await response.text();
+                const rows = parseCSV(text);
 
-    // Função de tratamento numérico rigoroso
-    function parseVal(v) {
-        if (!v) return 0;
-        let text = v.toString().trim();
-        if (text === "" || text === "0") return 0;
-        let clean = text.replace(/\./g, '').replace(',', '.');
-        let num = parseFloat(clean);
-        return isNaN(num) ? 0 : num;
-    }
+                const selectMes = document.getElementById('mesSelect');
+                selectMes.innerHTML = '';
 
-    async function loadData() {
-        try {
-            const response = await fetch(SHEET_URL);
-            const csvText = await response.text();
-            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
-            
-            db.meses = [];
-            db.dados = {};
+                rows.forEach((row, idx) => {
+                    if (idx < 2) return;
+                    const mesNome = row[0];
+                    if (!mesNome || mesNome.trim() === "" || mesNome.includes('CONTROLE')) return;
 
-            for (let i = 2; i < lines.length; i++) {
-                const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/"/g, ''));
-                if(!c[0] || c[0].trim() === "" || c[0].includes("ANO")) continue;
+                    dieselData[mesNome] = {
+                        v25: cleanVal(row[1]), v26: cleanVal(row[2]),
+                        k25: cleanVal(row[3]), k26: cleanVal(row[4]),
+                        maq25: cleanVal(row[5]), maq26: cleanVal(row[6]),
+                        evap25: cleanVal(row[7]), evap26: cleanVal(row[8]),
+                        outr25: cleanVal(row[9]), outr26: cleanVal(row[10]),
+                        total25: cleanVal(row[11]), total26: cleanVal(row[12]),
+                        anterior: cleanVal(row[14]), 
+                        aquisicao: cleanVal(row[15]), 
+                        atual: cleanVal(row[16])
+                    };
+
+                    const option = document.createElement('option');
+                    option.value = mesNome;
+                    option.textContent = mesNome.charAt(0).toUpperCase() + mesNome.slice(1).toLowerCase();
+                    selectMes.appendChild(option);
+                });
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                document.getElementById('filterControls').style.display = 'flex';
                 
-                const mes = c[0].trim().toUpperCase();
-                db.meses.push(mes);
-                
-                db.dados[mes] = {
-                    bast_agua: { r25: parseVal(c[1]), r26: parseVal(c[2]), u25: parseVal(c[3]), u26: parseVal(c[4]), label: 'M³' },
-                    bast_energia: { r25: parseVal(c[5]), r26: parseVal(c[6]), u25: parseVal(c[7]), u26: parseVal(c[8]), label: 'KWH' },
-                    cass_agua: { r25: parseVal(c[9]), r26: parseVal(c[10]), u25: parseVal(c[11]), u26: parseVal(c[12]), label: 'M³' },
-                    cass_energia: { r25: parseVal(c[13]), r26: parseVal(c[14]), u25: parseVal(c[15]), u26: parseVal(c[16]), label: 'KWH' }
-                };
+                updateDashboard();
+
+            } catch (err) {
+                console.error("Erro ao carregar dados:", err);
+                document.getElementById('loadingState').innerHTML = `<p class="text-red-400">Erro ao carregar dados da planilha.</p>`;
+            }
+        }
+
+        function updateDashboard() {
+            const mes = document.getElementById('mesSelect').value;
+            const metric = document.getElementById('metricSelect').value;
+            const data = dieselData[mes];
+
+            if (!data) return;
+
+            // Estoque Superior
+            document.getElementById('estoqueAnterior').innerText = data.anterior.toLocaleString('pt-BR') + ' L';
+            document.getElementById('aquisicao').innerText = data.aquisicao.toLocaleString('pt-BR') + ' L';
+            document.getElementById('estoqueAtual').innerText = data.atual.toLocaleString('pt-BR') + ' L';
+
+            document.getElementById('mesNome').innerText = mes;
+
+            const detailContent = document.getElementById('detailContent');
+            const efficiencyBox = document.getElementById('efficiencyBox');
+            detailContent.innerHTML = '';
+
+            if (metric === 'km') {
+                // Detalhamento Simplificado para Quilometragem
+                efficiencyBox.style.display = 'none';
+                detailContent.innerHTML = `
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400">Quilometragem 2025</span>
+                        <span class="font-bold text-white text-xl">${data.k25.toLocaleString('pt-BR')} KM</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400">Quilometragem 2026</span>
+                        <span class="font-bold text-cyan-400 text-xl">${data.k26.toLocaleString('pt-BR')} KM</span>
+                    </div>
+                    <div class="border-t border-slate-700 pt-6">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Diferença Mensal</p>
+                        <span class="font-black text-white text-2xl">${(data.k26 - data.k25).toLocaleString('pt-BR')} KM</span>
+                    </div>
+                `;
+            } else if (metric === 'total') {
+                // Detalhamento Simplificado para Consumo Total
+                efficiencyBox.style.display = 'none';
+                detailContent.innerHTML = `
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400">Consumo Total 2025</span>
+                        <span class="font-bold text-white text-xl">${data.total25.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400">Consumo Total 2026</span>
+                        <span class="font-bold text-cyan-400 text-xl">${data.total26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="border-t border-slate-700 pt-6">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Variação no Mês</p>
+                        <span class="font-black text-white text-2xl">${(data.total26 - data.total25).toLocaleString('pt-BR')} L</span>
+                    </div>
+                `;
+            } else {
+                // Detalhamento Completo para Consumo Viaturas (Padrão)
+                efficiencyBox.style.display = 'block';
+                detailContent.innerHTML = `
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Viaturas</span>
+                        <span class="font-bold text-white text-xl">${data.v26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Maquinário</span>
+                        <span class="font-bold text-white text-xl">${data.maq26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Evaporação</span>
+                        <span class="font-bold text-red-400/80 text-xl">${data.evap26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center group">
+                        <span class="text-slate-400 group-hover:text-slate-200 transition-colors">Outras OM</span>
+                        <span class="font-bold text-blue-400 text-xl">${data.outr26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-700 pt-6">
+                        <span class="text-slate-300 font-bold uppercase text-xs tracking-widest">Soma Mensal</span>
+                        <span class="font-black text-cyan-400 text-3xl">${data.total26.toLocaleString('pt-BR')} L</span>
+                    </div>
+                `;
+                const kml = data.v26 > 0 ? (data.k26 / data.v26).toFixed(2) : "0.00";
+                document.getElementById('kmlMedio').innerText = kml;
             }
 
-            const selMes = document.getElementById('mesSelect');
-            selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
-            
-            // Tenta definir o mês atual (simplificado) ou o primeiro mês com dados
-            selMes.selectedIndex = 0; 
-            
-            updateUI();
-            document.getElementById('status').innerText = "● Sincronizado e Atualizado com Sucesso";
-        } catch (e) {
-            console.error(e);
-            document.getElementById('status').innerText = "Erro ao ler a planilha. Verifique a conexão e o link.";
-        }
-    }
-
-    function getAverage(contaId, yearKey) {
-        let total = 0, count = 0;
-        db.meses.forEach(m => {
-            let val = db.dados[m][contaId][yearKey];
-            if (val > 0) { total += val; count++; }
-        });
-        return count > 0 ? total / count : 0;
-    }
-
-    function getTotal(contaId, yearKey) {
-        let total = 0;
-        db.meses.forEach(m => { total += db.dados[m][contaId][yearKey]; });
-        return total;
-    }
-
-    function calcVariation(val25, val26, elementId) {
-        const el = document.getElementById(elementId);
-        if (val25 === 0 && val26 === 0) {
-            el.className = 'badge neutral'; el.innerText = '-'; return;
-        }
-        if (val25 === 0) {
-            el.className = 'badge up'; el.innerText = '+100%'; return;
+            renderChart(metric);
         }
 
-        const varPercent = ((val26 - val25) / val25) * 100;
-        const formatted = varPercent.toFixed(1).replace('.', ',') + '%';
+        function renderChart(type) {
+            const labels = Object.keys(dieselData);
+            let d25, d26, title;
 
-        if (varPercent > 0) {
-            el.className = 'badge up'; el.innerText = '▲ +' + formatted;
-        } else if (varPercent < 0) {
-            el.className = 'badge down'; el.innerText = '▼ ' + formatted;
-        } else {
-            el.className = 'badge neutral'; el.innerText = '0%';
+            if (type === 'consumo') {
+                d25 = labels.map(m => dieselData[m].v25);
+                d26 = labels.map(m => dieselData[m].v26);
+                title = 'Comparativo: Consumo Viaturas (L)';
+            } else if (type === 'km') {
+                d25 = labels.map(m => dieselData[m].k25);
+                d26 = labels.map(m => dieselData[m].k26);
+                title = 'Comparativo: Quilometragem (KM)';
+            } else {
+                d25 = labels.map(m => dieselData[m].total25);
+                d26 = labels.map(m => dieselData[m].total26);
+                title = 'Comparativo: Consumo Total (L)';
+            }
+
+            document.getElementById('chartTitle').innerText = title;
+
+            if (myChart) myChart.destroy();
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '2025',
+                            data: d25,
+                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        },
+                        {
+                            label: '2026',
+                            data: d26,
+                            backgroundColor: '#22d3ee',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
         }
-    }
 
-    function updateUI() {
-        const mes = document.getElementById('mesSelect').value;
-        const conta = document.getElementById('contaSelect').value;
-        if (!db.dados[mes]) return;
-
-        const info = db.dados[mes][conta];
-        const fR = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const fU = (v) => v.toLocaleString('pt-BR') + ' ' + info.label;
-        
-        document.getElementById('nomeConta').innerText = document.querySelector(`#contaSelect option[value="${conta}"]`).text;
-        
-        // Cards de Valor (R$)
-        document.getElementById('v2025').innerText = fR(info.r25);
-        document.getElementById('v2026').innerText = fR(info.r26);
-        calcVariation(info.r25, info.r26, 'varR$');
-
-        // Cards de Consumo (M³/KWH)
-        document.getElementById('u2025').innerText = fU(info.u25);
-        document.getElementById('u2026').innerText = fU(info.u26);
-        calcVariation(info.u25, info.u26, 'varU');
-
-        // Totais e Médias
-        document.getElementById('t2026').innerText = fR(getTotal(conta, 'r26'));
-        document.getElementById('m2026').innerText = fR(getAverage(conta, 'r26'));
-
-        updateCharts(conta, info.label);
-    }
-
-    function updateCharts(contaId, unitLabel) {
-        const labels = db.meses;
-        const r25 = labels.map(m => db.dados[m][contaId].r25);
-        const r26 = labels.map(m => db.dados[m][contaId].r26);
-        const u25 = labels.map(m => db.dados[m][contaId].u25);
-        const u26 = labels.map(m => db.dados[m][contaId].u26);
-
-        // Configuração comum para eixos X e legenda
-        const commonOptions = {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } } },
-            scales: { x: { grid: { display: false }, ticks: { color: '#8892b0' } } }
-        };
-
-        // Gráfico Financeiro (R$)
-        if (financeChart) financeChart.destroy();
-        financeChart = new Chart(document.getElementById('financeChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: '2025 (R$)', data: r25, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: 'rgba(255, 255, 255, 0.3)', borderWidth: 1, borderRadius: 4 },
-                    { label: '2026 (R$)', data: r26, backgroundColor: 'rgba(0, 210, 255, 0.8)', borderColor: '#00d2ff', borderWidth: 1, borderRadius: 4 }
-                ]
-            },
-            options: { ...commonOptions, scales: { ...commonOptions.scales, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' }, beginAtZero: true } } }
-        });
-
-        // Gráfico Físico (Consumo) - Usando linha para diferenciar visualmente
-        if (unitChart) unitChart.destroy();
-        unitChart = new Chart(document.getElementById('unitChart').getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: `2025 (${unitLabel})`, data: u25, backgroundColor: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.5)', borderWidth: 2, borderDash: [5, 5], tension: 0.3 },
-                    { label: `2026 (${unitLabel})`, data: u26, backgroundColor: 'rgba(255, 0, 122, 0.2)', borderColor: '#ff007a', borderWidth: 3, pointBackgroundColor: '#ff007a', tension: 0.3, fill: true }
-                ]
-            },
-            options: { ...commonOptions, scales: { ...commonOptions.scales, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' }, beginAtZero: true } } }
-        });
-    }
-
-    document.getElementById('mesSelect').onchange = updateUI;
-    document.getElementById('contaSelect').onchange = updateUI;
-    loadData();
- 
- </script>
+        window.onload = loadData;
+    </script>
 </body>
 </html>
