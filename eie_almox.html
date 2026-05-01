@@ -15,6 +15,7 @@
             --pos: #00ff88;
             --neg: #ff4d4d;
             --neutral: #8892b0;
+            --chip-bg: #152545;
         }
 
         body {
@@ -28,18 +29,42 @@
         .container { max-width: 1200px; margin: 0 auto; }
 
         header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 20px; background: var(--bg-card); border-radius: 15px;
+            display: flex; flex-direction: column; gap: 20px;
+            padding: 25px; background: var(--bg-card); border-radius: 15px;
             margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
         }
+
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
 
         .logo-area { display: flex; flex-direction: column; }
         .logo { font-weight: 600; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
         #nomeContaCompleto { font-size: 0.85rem; color: var(--neutral); margin-top: 5px; }
 
+        /* Estilização dos Chips */
+        .chips-container {
+            display: flex; gap: 10px; flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .chip {
+            background: var(--chip-bg); color: var(--neutral);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 18px; border-radius: 20px;
+            font-size: 0.8rem; cursor: pointer;
+            transition: all 0.3s ease; font-weight: 400;
+        }
+
+        .chip:hover { border-color: var(--accent); color: var(--text); }
+
+        .chip.active {
+            background: var(--accent); color: var(--bg-body);
+            border-color: var(--accent); font-weight: 600;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+        }
+
         .controls select {
             background: #152545; color: white; border: 1px solid var(--accent);
-            padding: 10px 15px; border-radius: 8px; cursor: pointer; margin-left: 10px;
+            padding: 10px 15px; border-radius: 8px; cursor: pointer;
         }
 
         .grid-cards {
@@ -69,14 +94,18 @@
 
 <div class="container">
     <header>
-        <div class="logo-area">
-            <div class="logo">ALMOXARIFADO EIE_ALMOX</div>
-            <div id="nomeContaCompleto">A carregar contas...</div>
+        <div class="header-top">
+            <div class="logo-area">
+                <div class="logo">ALMOXARIFADO EIE_ALMOX</div>
+                <div id="nomeContaCompleto">A carregar contas...</div>
+            </div>
+            <div class="controls">
+                <select id="mesSelect"></select>
+            </div>
         </div>
-        <div class="controls">
-            <select id="mesSelect"></select>
-            <select id="contaSelect"></select>
-        </div>
+        
+        <!-- Área de Chips Substituindo o Select de Contas -->
+        <div id="contasChips" class="chips-container"></div>
     </header>
 
     <div class="grid-cards">
@@ -97,7 +126,7 @@
         <div class="card">
             <h3>Saldo Atual</h3>
             <p id="valSaldo" style="color: var(--pos)">R$ 0,00</p>
-            <span class="label-media">Em stock</span>
+            <span class="label-media">Em estoque</span>
         </div>
     </div>
 
@@ -109,10 +138,9 @@
 </div>
 
 <script>
-    // Substitui pelo teu link CSV do Almoxarifado
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1945400508&single=true&output=csv'; 
     
-    let db = { meses: [], dados: {}, listaContas: [] };
+    let db = { meses: [], dados: {}, listaContas: [], contaAtivaId: null };
     let myChart = null;
 
     function parseVal(v) {
@@ -129,24 +157,30 @@
             const csvText = await response.text();
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
-            // Nomes das contas estão na Linha 2 (índice 1)
             const nomesContas = lines[1].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
             
             db.listaContas = [];
-            // Salta a coluna de Meses e percorre as contas (4 colunas cada)
             for (let j = 1; j < nomesContas.length; j += 4) {
                 if (nomesContas[j]) {
-                    db.listaContas.push({ id: `c_${j}`, nome: nomesContas[j], colIdx: j });
+                    // Extrai apenas "Conta XX" ou similar para o chip
+                    const match = nomesContas[j].match(/CONTA\s\d+/i);
+                    const nomeCurto = match ? match[0] : nomesContas[j].substring(0, 8);
+
+                    db.listaContas.push({ 
+                        id: `c_${j}`, 
+                        nomeCompleto: nomesContas[j], 
+                        nomeCurto: nomeCurto,
+                        colIdx: j 
+                    });
                 }
             }
 
-            const selConta = document.getElementById('contaSelect');
-            selConta.innerHTML = db.listaContas.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+            // Renderizar Chips
+            renderChips();
 
             db.meses = [];
             db.dados = {};
 
-            // Os dados começam na Linha 4 (índice 3)
             for (let i = 3; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
                 if(!c[0] || c[0] === "" || c[0].includes("MESES")) continue;
@@ -168,11 +202,33 @@
             const selMes = document.getElementById('mesSelect');
             selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
             
-            updateUI();
+            // Selecionar primeira conta por padrão
+            if(db.listaContas.length > 0) selectConta(db.listaContas[0].id);
+
             document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro ao carregar.";
+            document.getElementById('status').innerText = "Erro ao carregar dados.";
         }
+    }
+
+    function renderChips() {
+        const container = document.getElementById('contasChips');
+        container.innerHTML = db.listaContas.map(c => `
+            <div class="chip" id="chip_${c.id}" onclick="selectConta('${c.id}')">
+                ${c.nomeCurto}
+            </div>
+        `).join('');
+    }
+
+    function selectConta(id) {
+        db.contaAtivaId = id;
+        
+        // Atualizar visual dos chips
+        document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
+        const activeChip = document.getElementById(`chip_${id}`);
+        if(activeChip) activeChip.classList.add('active');
+
+        updateUI();
     }
 
     function getAverage(contaId, field) {
@@ -186,14 +242,14 @@
 
     function updateUI() {
         const mes = document.getElementById('mesSelect').value;
-        const contaId = document.getElementById('contaSelect').value;
-        if (!db.dados[mes] || !db.dados[mes][contaId]) return;
+        const contaId = db.contaAtivaId;
+        if (!mes || !contaId || !db.dados[mes] || !db.dados[mes][contaId]) return;
 
         const info = db.dados[mes][contaId];
         const contaObj = db.listaContas.find(c => c.id === contaId);
         const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         
-        document.getElementById('nomeContaCompleto').innerText = contaObj.nome;
+        document.getElementById('nomeContaCompleto').innerText = contaObj.nomeCompleto;
         document.getElementById('valAnterior').innerText = f(info.anterior);
         document.getElementById('valAquisicao').innerText = f(info.aquisicao);
         document.getElementById('valConsumo').innerText = f(info.consumo);
@@ -223,17 +279,18 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } } },
+                plugins: { 
+                    legend: { labels: { color: '#ffffff', font: { family: 'Poppins', size: 11 } } } 
+                },
                 scales: {
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' } },
-                    x: { grid: { display: false }, ticks: { color: '#8892b0' } }
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0', font: { size: 10 } } },
+                    x: { grid: { display: false }, ticks: { color: '#8892b0', font: { size: 10 } } }
                 }
             }
         });
     }
 
     document.getElementById('mesSelect').onchange = updateUI;
-    document.getElementById('contaSelect').onchange = updateUI;
     loadData();
 </script>
 </body>
