@@ -20,7 +20,7 @@
             --border: rgba(255, 255, 255, 0.08);
         }
 
-        * { box-sizing: border-box; transition: all 0.2s ease; }
+        * { box-sizing: border-box; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
 
         body {
             background-color: var(--bg-body);
@@ -68,7 +68,7 @@
             text-shadow: 0 0 20px var(--accent-glow);
         }
 
-        .controls { display: flex; gap: 12px; }
+        .controls { display: flex; gap: 16px; align-items: center; }
 
         select {
             background: rgba(30, 41, 59, 0.7);
@@ -80,9 +80,40 @@
             outline: none;
             font-family: inherit;
             font-size: 0.9rem;
+            height: 42px;
         }
 
-        select:hover { border-color: var(--accent); background: rgba(30, 41, 59, 1); }
+        .chip-group {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 4px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .chip {
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .chip:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .chip.active {
+            background: var(--accent);
+            color: var(--bg-body);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
 
         .grid-cards {
             display: grid;
@@ -160,10 +191,10 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             header { flex-direction: column; gap: 20px; text-align: center; }
-            .controls { width: 100%; }
-            select { flex: 1; }
+            .controls { flex-direction: column; width: 100%; }
+            .chip-group { width: 100%; justify-content: center; overflow-x: auto; padding: 6px; }
             #nomeConta { font-size: 1rem; }
         }
     </style>
@@ -174,15 +205,15 @@
     <header>
         <div class="logo-area">
             <h1>EI_SREG CONSUMO</h1>
-            <div id="nomeConta">Sincronizando descrições...</div>
+            <div id="nomeConta">Carregando dados...</div>
         </div>
         <div class="controls">
             <select id="mesSelect"></select>
-            <select id="contaSelect">
-                <option value="16">CONTA 16</option>
-                <option value="21">CONTA 21</option>
-                <option value="22">CONTA 22</option>
-            </select>
+            <div class="chip-group" id="contaChips">
+                <div class="chip active" data-value="16">CONTA 16</div>
+                <div class="chip" data-value="21">CONTA 21</div>
+                <div class="chip" data-value="22">CONTA 22</div>
+            </div>
         </div>
     </header>
 
@@ -191,13 +222,14 @@
             <h3>Consumo 2025</h3>
             <div class="value-wrapper">
                 <p id="txt2025">0,00</p>
-                <span class="delta" id="deltaLabel">--</span>
             </div>
         </div>
         <div class="card">
             <h3>Consumo 2026</h3>
             <div class="value-wrapper">
                 <p id="txt2026" style="color: var(--accent)">0,00</p>
+                <!-- O indicador de porcentagem foi movido para cá -->
+                <span class="delta" id="deltaLabel">--</span>
             </div>
         </div>
         <div class="card alt">
@@ -218,7 +250,7 @@
 
     <div id="status-bar">
         <span class="dot"></span>
-        <span id="statusText">Aguardando dados...</span>
+        <span id="statusText">Sincronizando com Planilha...</span>
     </div>
 </div>
 
@@ -227,6 +259,7 @@
     
     let db = { meses: [], dados: {}, nomesContas: { "16": "", "21": "", "22": "" } };
     let myChart = null;
+    let selectedConta = "16";
 
     function parseVal(v) {
         if (!v) return 0;
@@ -236,7 +269,6 @@
         return isNaN(num) ? 0 : num;
     }
 
-    // Função utilitária para tratar o split de CSV com suporte a vírgulas dentro de aspas
     function splitCSV(line) {
         return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
     }
@@ -250,18 +282,13 @@
             db.meses = [];
             db.dados = {};
 
-            // EXTRAÇÃO DOS NOMES DAS CONTAS
-            // Linha 1 (index 0) costuma ser o ID da conta (ex: CONTA 16)
-            // Linha 2 (index 1) é onde agora reside a descrição (ex: MATERIAL DE EXPEDIENTE)
             const row1 = splitCSV(lines[0]);
             const row2 = splitCSV(lines[1]);
             
-            // Montagem do nome: "CONTA X - DESCRIÇÃO DA LINHA 2"
-            db.nomesContas["16"] = `${row1[1] || 'CONTA 16'} - ${row2[1] || 'MATERIAL DE EXPEDIENTE'}`;
-            db.nomesContas["21"] = `${row1[3] || 'CONTA 21'} - ${row2[3] || 'MATERIAL DE COPA E COZINHA'}`;
-            db.nomesContas["22"] = `${row1[5] || 'CONTA 22'} - ${row2[5] || 'MATERIAL DE LIMPEZA'}`;
+            db.nomesContas["16"] = `${row1[1] || 'CONTA 16'} - ${row2[1] || ''}`;
+            db.nomesContas["21"] = `${row1[3] || 'CONTA 21'} - ${row2[3] || ''}`;
+            db.nomesContas["22"] = `${row1[5] || 'CONTA 22'} - ${row2[5] || ''}`;
 
-            // Processamento dos dados mensais (inicia na linha 3 / index 2)
             for (let i = 2; i < lines.length; i++) {
                 const c = splitCSV(lines[i]);
                 if(!c[0] || c[0].toUpperCase().includes("MESES") || c[0] === "") continue;
@@ -279,13 +306,29 @@
             const selMes = document.getElementById('mesSelect');
             selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
             
+            if(db.meses.length > 0) selMes.value = db.meses[db.meses.length - 1];
+
+            setupChips();
             updateUI();
-            document.getElementById('statusText').innerText = "Dashboard Atualizado";
+            
+            document.getElementById('statusText').innerText = "Dados Sincronizados";
         } catch (e) {
             console.error(e);
-            document.getElementById('statusText').innerText = "Erro na sincronização";
+            document.getElementById('statusText').innerText = "Erro de Conexão";
             document.querySelector('.dot').style.background = "var(--danger)";
         }
+    }
+
+    function setupChips() {
+        const chips = document.querySelectorAll('.chip');
+        chips.forEach(chip => {
+            chip.onclick = function() {
+                chips.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                selectedConta = this.getAttribute('data-value');
+                updateUI();
+            };
+        });
     }
 
     function calculateFullAverage(contaId, yearKey) {
@@ -302,10 +345,9 @@
         if (!db.meses.length) return;
 
         const mes = document.getElementById('mesSelect').value;
-        const conta = document.getElementById('contaSelect').value;
+        const conta = selectedConta;
         const info = db.dados[mes][conta];
         
-        // Atualiza o display com a concatenação da Linha 1 e Linha 2
         document.getElementById('nomeConta').innerText = db.nomesContas[conta];
         
         document.getElementById('txt2025').innerText = info.v25.toLocaleString('pt-BR', {minimumFractionDigits: 2});
@@ -374,10 +416,30 @@
                     legend: {
                         position: 'top',
                         labels: { color: '#94a3b8', font: { family: "'Plus Jakarta Sans'", size: 12 } }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleColor: '#38bdf8',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                            }
+                        }
                     }
                 },
                 scales: {
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                    y: { 
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        ticks: { 
+                            color: '#64748b',
+                            callback: function(value) { return value.toLocaleString('pt-BR'); }
+                        } 
+                    },
                     x: { grid: { display: false }, ticks: { color: '#64748b' } }
                 }
             }
@@ -385,7 +447,6 @@
     }
 
     document.getElementById('mesSelect').onchange = updateUI;
-    document.getElementById('contaSelect').onchange = updateUI;
     
     window.onload = loadData;
 </script>
