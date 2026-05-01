@@ -8,99 +8,174 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg-body: #050a1a;
-            --bg-card: rgba(13, 27, 53, 0.95);
-            --accent: #00d2ff;
-            --text: #ffffff;
-            --pos: #00ff88;
-            --neg: #ff4d4d;
-            --chip-bg: #152545;
+            --bg-body: #020617;
+            --bg-card: rgba(15, 23, 42, 0.8);
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.3);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --pos: #10b981;
+            --neg: #f43f5e;
+            --chip-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
         }
+
+        * { box-sizing: border-box; transition: all 0.2s ease; }
 
         body {
             background-color: var(--bg-body);
-            color: var(--text);
+            color: var(--text-main);
             font-family: 'Poppins', sans-serif;
             margin: 0; padding: 20px;
-            background: radial-gradient(circle at top right, #0a1f44, #050a1a);
+            background: 
+                radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                #020617;
+            min-height: 100vh;
         }
 
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1300px; margin: 0 auto; }
 
+        /* Header Modernizado */
         header {
             display: flex; flex-direction: column; gap: 20px;
-            padding: 20px; background: var(--bg-card); border-radius: 15px;
-            margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
+            padding: 25px; 
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
-        @media (min-width: 768px) {
+        @media (min-width: 992px) {
             header { flex-direction: row; justify-content: space-between; align-items: center; }
         }
 
-        .logo { font-weight: 600; font-size: 1.1rem; color: var(--accent); }
-        #nomeConta { font-size: 0.9rem; color: #8892b0; margin-top: 5px; }
-
-        .controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-
-        /* Estilização do Select de Mês */
-        #mesSelect {
-            background: var(--chip-bg); color: white; border: 1px solid rgba(255,255,255,0.2);
-            padding: 8px 12px; border-radius: 8px; cursor: pointer; outline: none;
-            transition: border-color 0.3s;
+        .logo-area .logo { 
+            font-weight: 600; 
+            font-size: 1.3rem; 
+            letter-spacing: 1px;
+            background: linear-gradient(to right, var(--accent), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        #mesSelect:hover { border-color: var(--accent); }
 
-        /* Interface de Chips */
-        .chip-container { display: flex; gap: 10px; flex-wrap: wrap; }
+        #nomeConta { font-size: 0.85rem; color: var(--text-dim); margin-top: 4px; font-weight: 300; }
+
+        .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+        /* Select Estilizado */
+        #mesSelect {
+            background: var(--chip-bg);
+            color: white;
+            border: 1px solid var(--glass-border);
+            padding: 10px 16px;
+            border-radius: 14px;
+            cursor: pointer;
+            outline: none;
+            font-family: inherit;
+        }
+        #mesSelect:hover { border-color: var(--accent); background: rgba(30, 41, 59, 1); }
+
+        /* Chips Modernos */
+        .chip-container { display: flex; gap: 8px; flex-wrap: wrap; }
         
         .chip {
             background: var(--chip-bg);
-            color: #8892b0;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            color: var(--text-dim);
+            padding: 10px 20px;
+            border-radius: 14px;
+            font-size: 0.75rem;
             font-weight: 600;
             cursor: pointer;
-            border: 1px solid transparent;
-            transition: all 0.3s ease;
-            user-select: none;
-            white-space: nowrap;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
         }
 
         .chip:hover {
-            background: rgba(0, 210, 255, 0.1);
-            color: var(--text);
-            border-color: rgba(0, 210, 255, 0.3);
+            color: var(--text-main);
+            border-color: rgba(56, 189, 248, 0.4);
+            transform: translateY(-2px);
         }
 
         .chip.active {
             background: var(--accent);
-            color: var(--bg-body);
+            color: #020617;
             border-color: var(--accent);
-            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+            box-shadow: 0 4px 15px var(--accent-glow);
         }
 
-        /* Resto do Layout */
+        /* Grid de Cards */
         .grid-cards {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px; margin-bottom: 25px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px; margin-bottom: 30px;
         }
 
         .card {
-            background: var(--bg-card); padding: 20px; border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.05); text-align: center;
+            background: var(--bg-card);
+            backdrop-filter: blur(8px);
+            padding: 25px;
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .card h3 { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; margin-bottom: 10px; }
-        .card p { font-size: 1.2rem; font-weight: 600; margin: 0; }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255,255,255,0.15);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
 
+        .card h3 { 
+            font-size: 0.65rem; 
+            color: var(--text-dim); 
+            text-transform: uppercase; 
+            margin: 0 0 10px 0; 
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+
+        .card p { font-size: 1.5rem; font-weight: 600; margin: 0; letter-spacing: -0.5px; }
+
+        /* Área do Gráfico */
         .content-area {
-            background: var(--bg-card); padding: 25px; border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.05);
+            background: var(--bg-card);
+            backdrop-filter: blur(8px);
+            padding: 30px;
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: fadeIn 0.8s ease-out;
         }
 
-        canvas { width: 100% !important; height: 380px !important; }
-        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        canvas { width: 100% !important; height: 400px !important; }
+
+        #status { 
+            text-align: center; 
+            font-size: 0.65rem; 
+            color: var(--text-dim); 
+            margin-top: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .dot { width: 6px; height: 6px; background: var(--pos); border-radius: 50%; display: inline-block; box-shadow: 0 0 10px var(--pos); }
+
+        /* Utilitários */
+        .trend-up { color: var(--pos); font-size: 0.7rem; margin-top: 5px; font-weight: 400; }
+        .trend-down { color: var(--neg); font-size: 0.7rem; margin-top: 5px; font-weight: 400; }
     </style>
 </head>
 <body>
@@ -108,8 +183,8 @@
 <div class="container">
     <header>
         <div class="logo-area">
-            <div class="logo">CONTROLE DE MATERIAIS STIC</div>
-            <div id="nomeConta">Carregando...</div>
+            <div class="logo">STIC DASHBOARD</div>
+            <div id="nomeConta">Carregando sistema...</div>
         </div>
         
         <div class="controls">
@@ -123,20 +198,22 @@
     </header>
 
     <div class="grid-cards">
-        <div class="card">
+        <div class="card" id="cardAnt">
             <h3>Saldo Anterior</h3>
             <p id="txtAnt">R$ 0,00</p>
         </div>
-        <div class="card">
-            <h3>Aquisição</h3>
+        <div class="card" id="cardAquis">
+            <h3>Aquisição no Mês</h3>
             <p id="txtAquis" style="color: var(--pos)">R$ 0,00</p>
+            <div class="trend-up" id="trendAquis">▲ entrada</div>
         </div>
-        <div class="card">
-            <h3>Consumo</h3>
+        <div class="card" id="cardCons">
+            <h3>Consumo no Mês</h3>
             <p id="txtCons" style="color: var(--neg)">R$ 0,00</p>
+            <div class="trend-down" id="trendCons">▼ saída</div>
         </div>
-        <div class="card">
-            <h3>Saldo Atual</h3>
+        <div class="card" id="cardAtu">
+            <h3>Saldo Atual Disponível</h3>
             <p id="txtAtu" style="color: var(--accent)">R$ 0,00</p>
         </div>
     </div>
@@ -145,7 +222,7 @@
         <canvas id="mainChart"></canvas>
     </div>
 
-    <div id="status">Sincronizando...</div>
+    <div id="status"><span class="dot"></span> Sincronizado com Base Ativa</div>
 </div>
 
 <script>
@@ -155,12 +232,37 @@
     let myChart = null;
     let selectedConta = "17";
 
+    // Formatação de Moeda
+    const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
     function parseVal(v) {
         if (!v) return 0;
         let text = v.toString().trim();
         let clean = text.replace(/\./g, '').replace(',', '.');
         let num = parseFloat(clean);
         return isNaN(num) ? 0 : num;
+    }
+
+    // Função de animação de números
+    function animateValue(id, start, end, duration) {
+        const obj = document.getElementById(id);
+        const range = end - start;
+        const minTimer = 50;
+        let stepTime = Math.abs(Math.floor(duration / range));
+        stepTime = Math.max(stepTime, minTimer);
+        const startTime = new Date().getTime();
+        const endTime = startTime + duration;
+        let timer;
+
+        function run() {
+            const now = new Date().getTime();
+            const remaining = Math.max((endTime - now) / duration, 0);
+            const value = end - (remaining * range);
+            obj.innerText = formatter.format(value);
+            if (value == end) clearInterval(timer);
+        }
+        timer = setInterval(run, stepTime);
+        run();
     }
 
     async function loadData() {
@@ -189,15 +291,13 @@
             const selMes = document.getElementById('mesSelect');
             selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
             
-            // Define o último mês como padrão se disponível
             if(db.meses.length > 0) selMes.value = db.meses[db.meses.length - 1];
 
             initChips();
             updateUI();
-            document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
             console.error(e);
-            document.getElementById('status').innerText = "Erro ao carregar dados.";
+            document.getElementById('status').innerHTML = "✖ Erro na conexão com dados";
         }
     }
 
@@ -218,19 +318,30 @@
         if (!db.dados[mes]) return;
 
         const info = db.dados[mes][selectedConta];
-        const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         
-        document.getElementById('nomeConta').innerText = `Conta ${selectedConta} - ${info.label}`;
-        document.getElementById('txtAnt').innerText = f(info.ant);
-        document.getElementById('txtAquis').innerText = f(info.aq);
-        document.getElementById('txtCons').innerText = f(info.con);
-        document.getElementById('txtAtu').innerText = f(info.atu);
+        document.getElementById('nomeConta').innerText = `Gestão de Estoque • ${info.label}`;
+        
+        // Atualização com efeito simples (substituído animação complexa por atualização direta para performance)
+        document.getElementById('txtAnt').innerText = formatter.format(info.ant);
+        document.getElementById('txtAquis').innerText = formatter.format(info.aq);
+        document.getElementById('txtCons').innerText = formatter.format(info.con);
+        document.getElementById('txtAtu').innerText = formatter.format(info.atu);
 
         updateChart(selectedConta);
     }
 
     function updateChart(contaId) {
         const ctx = document.getElementById('mainChart').getContext('2d');
+        
+        // Criar gradientes
+        const gradientPos = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientPos.addColorStop(0, '#10b981');
+        gradientPos.addColorStop(1, 'rgba(16, 185, 129, 0.2)');
+
+        const gradientNeg = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientNeg.addColorStop(0, '#f43f5e');
+        gradientNeg.addColorStop(1, 'rgba(244, 63, 94, 0.2)');
+
         if (myChart) myChart.destroy();
         
         myChart = new Chart(ctx, {
@@ -239,46 +350,61 @@
                 labels: db.meses,
                 datasets: [
                     {
-                        label: 'Aquisição (R$)',
+                        label: 'Aquisição',
                         data: db.meses.map(m => db.dados[m][contaId].aq),
-                        backgroundColor: '#00ff88',
-                        borderRadius: 5
+                        backgroundColor: gradientPos,
+                        borderColor: '#10b981',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        hoverBorderWidth: 2
                     },
                     {
-                        label: 'Consumo (R$)',
+                        label: 'Consumo',
                         data: db.meses.map(m => db.dados[m][contaId].con),
-                        backgroundColor: '#ff4d4d',
-                        borderRadius: 5
+                        backgroundColor: gradientNeg,
+                        borderColor: '#f43f5e',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        hoverBorderWidth: 2
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
                 plugins: { 
-                    legend: { labels: { color: '#ffffff', font: { family: 'Poppins' } } },
+                    legend: { 
+                        position: 'top',
+                        align: 'end',
+                        labels: { 
+                            color: '#94a3b8', 
+                            boxWidth: 12,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            font: { family: 'Poppins', size: 12 } 
+                        } 
+                    },
                     tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleFont: { size: 14, weight: 'bold' },
+                        padding: 15,
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
                         callbacks: {
-                            label: (context) => {
-                                let label = context.dataset.label || '';
-                                if (label) label += ': ';
-                                if (context.parsed.y !== null) {
-                                    label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
-                                }
-                                return label;
-                            }
+                            label: (context) => ` ${context.dataset.label}: ${formatter.format(context.parsed.y)}`
                         }
                     }
                 },
                 scales: {
                     y: { 
                         beginAtZero: true, 
-                        grid: { color: 'rgba(255,255,255,0.05)' }, 
-                        ticks: { color: '#8892b0', font: { size: 10 } } 
+                        grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false }, 
+                        ticks: { color: '#64748b', font: { size: 11 } } 
                     },
                     x: { 
                         grid: { display: false },
-                        ticks: { color: '#8892b0', font: { size: 10 } } 
+                        ticks: { color: '#64748b', font: { size: 11 } } 
                     }
                 }
             }
@@ -286,7 +412,7 @@
     }
 
     document.getElementById('mesSelect').onchange = updateUI;
-    loadData();
+    window.onload = loadData;
 </script>
 </body>
 </html>
