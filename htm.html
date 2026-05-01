@@ -41,12 +41,40 @@
         .title-group h1 { margin: 0; font-size: 1.5rem; letter-spacing: 1px; color: var(--accent); font-weight: 700; }
         .title-group p { margin: 5px 0 0; font-size: 0.85rem; color: var(--text-muted); }
 
-        .controls select {
-            background: #16213e; color: white; border: 1px solid var(--accent);
-            padding: 10px 20px; border-radius: 10px; cursor: pointer;
-            font-family: 'Poppins', sans-serif; outline: none; transition: 0.3s;
+        /* Estilização dos Chips */
+        .chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
         }
-        .controls select:hover { background: #1e2b4d; border-color: white; }
+
+        .chip {
+            background: rgba(22, 33, 62, 0.6);
+            color: var(--text-muted);
+            border: 1px solid rgba(76, 201, 240, 0.2);
+            padding: 8px 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            text-transform: uppercase;
+        }
+
+        .chip:hover {
+            border-color: var(--accent);
+            color: var(--text);
+            background: rgba(76, 201, 240, 0.1);
+        }
+
+        .chip.active {
+            background: var(--accent);
+            color: #0a0f1d;
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(76, 201, 240, 0.4);
+        }
 
         .main-stats {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -86,7 +114,8 @@
 
         @media (max-width: 950px) {
             .dashboard-grid { grid-template-columns: 1fr; }
-            header { flex-direction: column; text-align: center; }
+            header { flex-direction: column; text-align: center; align-items: stretch; }
+            .chips-container { justify-content: center; }
         }
     </style>
 </head>
@@ -98,8 +127,8 @@
             <h1>GESTÃO DE FATURAMENTO</h1>
             <p>Relatório Consolidado EIE_SSG - Base Financeira</p>
         </div>
-        <div class="controls">
-            <select id="mesSelect"></select>
+        <div class="chips-container" id="mesChips">
+            <!-- Chips serão inseridos via JavaScript -->
         </div>
     </header>
 
@@ -145,10 +174,10 @@
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1030842077&single=true&output=csv';
 
     let db = [];
+    let selectedMes = "";
     let lineChart = null;
     let pieChart = null;
 
-    // Lista de meses válidos para filtragem
     const mesesValidos = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 
     function parseCurrency(val) {
@@ -165,15 +194,11 @@
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
 
             db = [];
-            // Começa da linha 1 para ignorar o cabeçalho técnico
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/"/g, ''));
-                
                 if (!cols[0]) continue;
-                
                 const mesLimpo = cols[0].trim().toUpperCase();
 
-                // FILTRO: Só adiciona se o nome da primeira coluna estiver na lista de meses válidos
                 if (mesesValidos.includes(mesLimpo)) {
                     db.push({
                         mes: mesLimpo,
@@ -186,10 +211,12 @@
                 }
             }
 
-            const sel = document.getElementById('mesSelect');
-            sel.innerHTML = db.map(d => `<option value="${d.mes}">${d.mes}</option>`).join('');
+            if (db.length > 0) {
+                renderChips();
+                // Seleciona o último mês disponível por padrão
+                selectMonth(db[db.length - 1].mes);
+            }
             
-            updateUI();
             document.getElementById('status').innerText = "● Dados Financeiros Carregados";
         } catch (error) {
             console.error(error);
@@ -197,10 +224,24 @@
         }
     }
 
+    function renderChips() {
+        const container = document.getElementById('mesChips');
+        container.innerHTML = db.map(d => `
+            <div class="chip ${d.mes === selectedMes ? 'active' : ''}" 
+                 onclick="selectMonth('${d.mes}')">
+                ${d.mes}
+            </div>
+        `).join('');
+    }
+
+    function selectMonth(mes) {
+        selectedMes = mes;
+        renderChips(); // Atualiza a classe 'active' visualmente
+        updateUI();
+    }
+
     function updateUI() {
-        const selectedMes = document.getElementById('mesSelect').value;
         const data = db.find(d => d.mes === selectedMes);
-        
         if (!data) return;
 
         const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -228,8 +269,11 @@
                     backgroundColor: 'rgba(76, 201, 240, 0.1)',
                     fill: true,
                     tension: 0.4,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#4cc9f0'
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: db.map(d => d.mes === selectedMes ? '#fff' : '#4cc9f0'),
+                    pointBorderWidth: db.map(d => d.mes === selectedMes ? 3 : 1),
+                    pointBorderColor: '#4cc9f0'
                 }]
             },
             options: {
@@ -253,7 +297,7 @@
                     data: [activeData.contracheque, activeData.gru, activeData.gratificacao, activeData.cortesia],
                     backgroundColor: ['#4cc9f0', '#ffb703', '#4caf50', '#ff4d4d'],
                     borderWidth: 0,
-                    hoverOffset: 10
+                    hoverOffset: 15
                 }]
             },
             options: {
@@ -262,14 +306,13 @@
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { color: '#edf2f4', padding: 20, font: { family: 'Poppins' } }
+                        labels: { color: '#edf2f4', padding: 20, font: { family: 'Poppins', size: 11 } }
                     }
                 }
             }
         });
     }
 
-    document.getElementById('mesSelect').onchange = updateUI;
     fetchData();
 </script>
 
