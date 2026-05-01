@@ -6,7 +6,6 @@
     <title>STIC - Inteligência de Consumo</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Ícones Lucide para melhor visual -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
@@ -19,6 +18,7 @@
             --text-secondary: #94a3b8;
             --border: rgba(255, 255, 255, 0.08);
             --glass: rgba(255, 255, 255, 0.03);
+            --chip-inactive: #1e293b;
         }
 
         * { box-sizing: border-box; transition: all 0.2s ease; }
@@ -37,19 +37,24 @@
 
         .container { max-width: 1300px; margin: 0 auto; }
 
-        /* Layout do Cabeçalho */
         header {
             display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
             padding: 24px;
             background: var(--bg-card);
             backdrop-filter: blur(12px);
             border-radius: 24px;
             margin-bottom: 24px;
             border: 1px solid var(--border);
-            gap: 20px;
+            gap: 24px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
         .brand h1 { 
@@ -63,22 +68,77 @@
         
         .brand #nomeConta { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
 
-        .controls { display: flex; gap: 12px; }
+        /* Estilização dos Controles */
+        .controls-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 600;
+            min-width: 60px;
+        }
 
         select {
             background: #1e293b;
             color: white;
             border: 1px solid var(--border);
-            padding: 10px 16px;
-            border-radius: 12px;
+            padding: 8px 16px;
+            border-radius: 10px;
             outline: none;
             cursor: pointer;
             font-family: inherit;
         }
 
-        select:hover { border-color: var(--accent-blue); }
+        /* Sistema de Chips */
+        .chips-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
 
-        /* Sistema de Grid */
+        .chip {
+            padding: 8px 16px;
+            background: var(--chip-inactive);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .chip:hover {
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .chip.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+        }
+
+        .chip i { width: 14px; height: 14px; }
+
+        /* Grid de Estatísticas */
         .grid-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -120,7 +180,6 @@
         .variation.positive { color: var(--accent-red); }
         .variation.negative { color: var(--accent-green); }
 
-        /* Conteúdo Principal */
         .content-area {
             background: var(--bg-card);
             padding: 30px;
@@ -157,9 +216,11 @@
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
 
         @media (max-width: 768px) {
-            header { flex-direction: column; text-align: center; }
-            .controls { width: 100%; flex-direction: column; }
-            select { width: 100%; }
+            header { padding: 16px; }
+            .header-top { flex-direction: column; text-align: center; }
+            .filter-group { flex-direction: column; align-items: flex-start; }
+            .chips-container { width: 100%; }
+            .chip { flex-grow: 1; justify-content: center; }
         }
     </style>
 </head>
@@ -167,17 +228,32 @@
 
 <div class="container">
     <header>
-        <div class="brand">
-            <div id="nomeConta">STIC - SISTEMA DE TELECOM</div>
-            <h1>Dash Inteligente de Consumo</h1>
+        <div class="header-top">
+            <div class="brand">
+                <div id="nomeConta">STIC - SISTEMA DE TELECOM</div>
+                <h1>Dash Inteligente de Consumo</h1>
+            </div>
+            <div class="filter-group">
+                <span class="filter-label">Período:</span>
+                <select id="mesSelect"></select>
+            </div>
         </div>
-        <div class="controls">
-            <select id="mesSelect"></select>
-            <select id="contaSelect">
-                <option value="vivo">VIVO FIXO</option>
-                <option value="telefonia">TELEFONIA MÓVEL</option>
-                <option value="telebrasilia">TELEBRASILIA</option>
-            </select>
+
+        <div class="controls-wrapper">
+            <div class="filter-group">
+                <span class="filter-label">Contas:</span>
+                <div class="chips-container" id="contaChips">
+                    <div class="chip active" data-value="vivo">
+                        <i data-lucide="phone"></i> VIVO FIXO
+                    </div>
+                    <div class="chip" data-value="telefonia">
+                        <i data-lucide="smartphone"></i> TELEFONIA MÓVEL
+                    </div>
+                    <div class="chip" data-value="telebrasilia">
+                        <i data-lucide="building-2"></i> TELEBRASILIA
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -235,7 +311,7 @@
             <div class="status-dot"></div>
             <span>Sincronizado com Nuvem de Dados</span>
         </div>
-        <div style="font-size: 0.75rem; color: var(--text-secondary)">v2.1 Atualizada</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary)">v2.2 Atualizada</div>
     </footer>
 </div>
 
@@ -244,8 +320,8 @@
     
     let db = { meses: [], dados: {} };
     let myChart = null;
+    let selectedConta = 'vivo';
 
-    // Helper: Formata moeda
     const fmt = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
     function parseVal(v) {
@@ -282,6 +358,7 @@
             const selMes = document.getElementById('mesSelect');
             selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
             
+            setupChips();
             updateUI();
             lucide.createIcons();
         } catch (e) {
@@ -290,10 +367,18 @@
         }
     }
 
-    /**
-     * Calcula a média de um ano. 
-     * Se skipZeros for true, ignora os meses que ainda não tiveram consumo registrado.
-     */
+    function setupChips() {
+        const chips = document.querySelectorAll('.chip');
+        chips.forEach(chip => {
+            chip.onclick = () => {
+                chips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                selectedConta = chip.dataset.value;
+                updateUI();
+            };
+        });
+    }
+
     function calculateAverage(contaId, yearKey, skipZeros = false) {
         let total = 0;
         let count = 0;
@@ -309,18 +394,14 @@
 
     function updateUI() {
         const mes = document.getElementById('mesSelect').value;
-        const conta = document.getElementById('contaSelect').value;
-        const info = db.dados[mes][conta];
+        const info = db.dados[mes][selectedConta];
         
-        // Atualiza labels dos meses
         document.getElementById('labelMes25').innerText = `Consumo ${mes}/25`;
         document.getElementById('labelMes26').innerText = `Consumo ${mes}/26`;
 
-        // Valores Individuais
         document.getElementById('txt2025').innerText = fmt(info.v25);
         document.getElementById('txt2026').innerText = fmt(info.v26);
 
-        // Variação Mensal YoY
         const diffLabel = document.getElementById('diffLabel');
         const card2026 = document.getElementById('card2026');
         if (info.v25 > 0) {
@@ -333,14 +414,12 @@
             card2026.className = 'card';
         }
 
-        // Médias
-        const avg25 = calculateAverage(conta, 'v25', false); // Média total de 2025
-        const avg26 = calculateAverage(conta, 'v26', true);  // Média apenas dos meses com valor em 2026
+        const avg25 = calculateAverage(selectedConta, 'v25', false);
+        const avg26 = calculateAverage(selectedConta, 'v26', true);
 
         document.getElementById('avg2025').innerText = fmt(avg25);
         document.getElementById('avg2026Value').innerText = fmt(avg26);
 
-        // Variação das Médias
         const avgDiffLabel = document.getElementById('avgDiffLabel');
         const cardAvg26 = document.getElementById('cardAvg26');
         if (avg25 > 0) {
@@ -350,7 +429,7 @@
             avgDiffLabel.className = 'variation ' + (avgPerc > 0 ? 'positive' : 'negative');
         }
 
-        updateChart(conta);
+        updateChart(selectedConta);
     }
 
     function updateChart(contaId) {
@@ -418,8 +497,6 @@
     }
 
     document.getElementById('mesSelect').onchange = updateUI;
-    document.getElementById('contaSelect').onchange = updateUI;
-    
     window.onload = loadData;
 </script>
 </body>
