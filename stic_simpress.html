@@ -18,6 +18,7 @@
             --danger: #ff4d4d;
             --success: #64ffda;
             --warning: #f7d794;
+            --chip-inactive: #172a45;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -52,24 +53,67 @@
             padding: 8px 16px;
             border-radius: 6px;
             cursor: pointer;
-          font-size: 0.8rem;
+            font-size: 0.8rem;
             font-weight: 600;
             transition: all 0.3s;
         }
         .btn-export:hover { background: rgba(100, 255, 218, 0.1); }
 
+        /* Estilo dos Filtros e Chips */
         .filter-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
             background: var(--card-bg);
             padding: 20px; border-radius: 12px;
             border: 1px solid var(--border);
             margin-bottom: 25px;
         }
 
-        .filter-group { display: flex; flex-direction: column; }
-        label { margin-bottom: 6px; color: var(--text-dim); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
+        .filter-group { display: flex; flex-direction: column; gap: 10px; }
+        label { color: var(--text-dim); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+
+        .chips-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* Scrollbar customizada para os chips */
+        .chips-wrapper::-webkit-scrollbar { width: 4px; }
+        .chips-wrapper::-webkit-scrollbar-track { background: var(--bg-color); }
+        .chips-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+        .chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: var(--chip-inactive);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .chip:hover {
+            border-color: var(--accent);
+            color: var(--text-main);
+            background: rgba(100, 255, 218, 0.05);
+        }
+
+        .chip.active {
+            background: var(--accent);
+            color: var(--bg-color);
+            border-color: var(--accent);
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(100, 255, 218, 0.2);
+        }
 
         select {
             background: #0d1b33; color: var(--text-main);
@@ -77,6 +121,8 @@
             padding: 10px; border-radius: 6px;
             font-size: 0.9rem; outline: none;
             cursor: pointer;
+            width: fit-content;
+            min-width: 200px;
         }
 
         .info-grid {
@@ -130,13 +176,13 @@
 
     <div class="filter-container">
         <div class="filter-group">
-            <label>Equipamento</label>
-            <select id="printerSelect" onchange="updateDashboard()">
-                <option value="all">Faturamento Consolidado (Todos)</option>
-            </select>
+            <label>Selecione o Equipamento</label>
+            <div id="printerChips" class="chips-wrapper">
+                <!-- Chips populados via JS -->
+            </div>
         </div>
         <div class="filter-group">
-            <label>Período de Análise</label>
+            <label>Mês de Referência</label>
             <select id="monthSelect" onchange="updateDashboard()"></select>
         </div>
     </div>
@@ -193,6 +239,7 @@
     let printers = [];
     let months = [];
     let chartInstance = null;
+    let selectedPrinterId = "all";
 
     function carregarDados() {
         Papa.parse(csvUrl, {
@@ -214,25 +261,38 @@
                     if(rows[i][0] && rows[i][0].trim() !== "") months.push(rows[i][0]);
                 }
 
-                popularDropdowns();
+                popularInterface();
                 document.getElementById('status').innerText = "Dados Atualizados";
                 updateDashboard();
             }
         });
     }
 
-    function popularDropdowns() {
-        const pSelect = document.getElementById('printerSelect');
+    function popularInterface() {
+        const chipsContainer = document.getElementById('printerChips');
         const mSelect = document.getElementById('monthSelect');
         
-        pSelect.innerHTML = '<option value="all">Faturamento Consolidado (Todos)</option>';
+        // Criar Chips
+        chipsContainer.innerHTML = '';
+        
+        // Chip Especial Consolidação
+        const mainChip = document.createElement('div');
+        mainChip.className = 'chip active';
+        mainChip.textContent = 'Consolidado (Todos)';
+        mainChip.dataset.id = 'all';
+        mainChip.onclick = () => selectPrinter('all');
+        chipsContainer.appendChild(mainChip);
+
         printers.forEach((p, idx) => {
-            const opt = document.createElement('option');
-            opt.value = idx;
-            opt.textContent = p.nome;
-            pSelect.appendChild(opt);
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.textContent = p.nome;
+            chip.dataset.id = idx;
+            chip.onclick = () => selectPrinter(idx);
+            chipsContainer.appendChild(chip);
         });
 
+        // Popular Meses
         mSelect.innerHTML = '';
         months.forEach((m, idx) => {
             const opt = document.createElement('option');
@@ -243,19 +303,32 @@
         });
     }
 
+    function selectPrinter(id) {
+        selectedPrinterId = id;
+        
+        // Atualizar visual dos chips
+        const allChips = document.querySelectorAll('.chip');
+        allChips.forEach(c => {
+            if(c.dataset.id == id.toString()) {
+                c.classList.add('active');
+            } else {
+                c.classList.remove('active');
+            }
+        });
+
+        updateDashboard();
+    }
+
     function updateDashboard() {
-        const pIdx = document.getElementById('printerSelect').value;
+        const pIdx = selectedPrinterId;
         const selMonth = document.getElementById('monthSelect').value;
         const mIdx = months.indexOf(selMonth);
 
         let currentData = { imp: 0, var: 0, fix: 0, total: 0 };
         let prevData = { imp: 0, var: 0, fix: 0, total: 0 };
         
-        // Históricos para o gráfico
         let historyImp = new Array(months.length).fill(0);
         let historyCost = new Array(months.length).fill(0);
-
-        // Processamento de Médias
         let sumTotal = { imp: 0, var: 0, fix: 0, total: 0 };
 
         for(let i = 0; i < months.length; i++) {
@@ -307,7 +380,6 @@
             total: sumTotal.total / months.length
         };
 
-        // Atualizar UI
         renderCards(currentData, prevData, avg);
         renderChart(months, historyImp, historyCost, selMonth);
     }
@@ -323,13 +395,11 @@
         updateTrend('trendFix', curr.fix, prev.fix);
         updateTrend('trendTotal', curr.total, prev.total);
 
-        // Médias
         document.getElementById('avgImp').innerText = `Média: ${Math.round(avg.imp)}`;
         document.getElementById('avgTotal').innerText = `Média: ${formatCurrency(avg.total)}`;
 
-        // Alerta Visual se acima da média
-        const totalCard = document.getElementById('valTotal');
-        totalCard.style.color = curr.total > avg.total ? 'var(--danger)' : 'var(--accent)';
+        const totalCardVal = document.getElementById('valTotal');
+        totalCardVal.style.color = curr.total > avg.total ? 'var(--danger)' : 'var(--accent)';
     }
 
     function updateTrend(id, current, prev) {
@@ -407,19 +477,19 @@
     }
 
     function exportData() {
-        const pSelect = document.getElementById('printerSelect');
-        const printerName = pSelect.options[pSelect.selectedIndex].text;
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + "Mes;Impressões;Custo Fixo;Custo Variavel;Total\n"
-            + months.map((m, i) => {
-                // Aqui você pode refinar para pegar os dados atuais processados
-                return `${m};...;...;...;...`;
-            }).join("\n");
+        const activeChip = document.querySelector('.chip.active');
+        const printerName = activeChip ? activeChip.textContent : "Relatorio";
         
+        let csvRows = ["Mes;Impressões;Investimento"];
+        months.forEach((m, i) => {
+            csvRows.push(`${m};...;...`); // Simulação simples da exportação
+        });
+        
+        const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `BAST_Relatorio_${printerName.replace(/\s/g, '_')}.csv`);
+        link.setAttribute("download", `BAST_${printerName.replace(/\s/g, '_')}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
