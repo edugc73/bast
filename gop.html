@@ -191,7 +191,7 @@
         <canvas id="mainChart"></canvas>
     </div>
 
-    <div id="status">Sincronizando banco de dados...</div>
+    <div id="status">Iniciando sistema...</div>
 </div>
 
 <!-- Modal de Lançamento -->
@@ -251,8 +251,9 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
+    // Setup inicial
     const firebaseConfig = JSON.parse(__firebase_config);
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -261,26 +262,49 @@
 
     let rawData = {};
     let myChart = null;
-    let user = null;
+    let currentUser = null;
+    let unsubscribeData = null;
 
-    // Inicialização Auth
+    // Função de inicialização com Auth priorizada (Regra 3)
     async function init() {
         try {
-            await signInAnonymously(auth);
-            onAuthStateChanged(auth, (u) => {
-                user = u;
-                if(user) listenToData();
+            document.getElementById('status').innerText = "Autenticando...";
+            
+            // Prioriza token customizado se disponível
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+
+            // Escuta estado da autenticação
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    console.log("Autenticado como:", user.uid);
+                    startDataListener();
+                } else {
+                    if (unsubscribeData) unsubscribeData();
+                    document.getElementById('status').innerText = "Aguardando autenticação...";
+                }
             });
         } catch (e) {
-            console.error(e);
-            document.getElementById('status').innerText = "Erro na conexão.";
+            console.error("Erro na inicialização:", e);
+            document.getElementById('status').innerText = "Erro de permissão ou conexão.";
         }
     }
 
-    // Escuta mudanças no banco em tempo real
-    function listenToData() {
-        const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'financeiro'));
-        onSnapshot(q, (snapshot) => {
+    // Escuta mudanças no banco seguindo a Regra 1 (Caminho Estrito)
+    function startDataListener() {
+        if (!currentUser) return;
+
+        // Cleanup listener anterior se existir
+        if (unsubscribeData) unsubscribeData();
+
+        const collectionPath = collection(db, 'artifacts', appId, 'public', 'data', 'financeiro');
+        const q = query(collectionPath);
+
+        unsubscribeData = onSnapshot(q, (snapshot) => {
             rawData = {};
             snapshot.forEach((doc) => {
                 const data = doc.data();
@@ -289,14 +313,19 @@
                 rawData[mes][conta] = data;
             });
             updateUI();
-            document.getElementById('status').innerText = "● Sincronizado em tempo real";
+            document.getElementById('status').innerText = "● Conectado e Sincronizado";
         }, (err) => {
-            console.error(err);
+            console.error("Erro no Listener:", err);
+            document.getElementById('status').innerText = "Erro de permissão ao ler dados.";
         });
     }
 
+    // Função de Salvar seguindo as regras de Auth guard (Regra 3)
     window.saveData = async function() {
-        if(!user) return;
+        if (!currentUser) {
+            alert("Aguardando conexão segura...");
+            return;
+        }
         
         const mes = document.getElementById('formMes').value;
         const conta = document.getElementById('formConta').value;
@@ -304,6 +333,7 @@
         const aq = parseFloat(document.getElementById('formAq').value) || 0;
         const con = parseFloat(document.getElementById('formCon').value) || 0;
 
+        // Caminho conforme Regra 1
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'financeiro', `${mes}_${conta}`);
         
         try {
@@ -311,11 +341,13 @@
             await setDoc(docRef, {
                 ant, aq, con, 
                 atu: ant + aq - con,
+                updatedBy: currentUser.uid,
                 timestamp: Date.now()
             });
             closeModal();
         } catch (e) {
-            alert("Erro ao salvar: " + e.message);
+            console.error("Erro ao salvar:", e);
+            document.getElementById('status').innerText = "Erro ao gravar no banco.";
         }
     }
 
@@ -343,6 +375,8 @@
 
     function updateChart(contaId) {
         const mesesOrdem = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+        
+        // Filtra apenas meses que possuem dados para a conta selecionada
         const labels = mesesOrdem.filter(m => rawData[m] && rawData[m][contaId]);
         const values = labels.map(m => rawData[m][contaId].atu);
 
@@ -355,7 +389,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Saldo Atual (R$)',
+                    label: 'Saldo Atual',
                     data: values,
                     borderColor: '#00d2ff',
                     backgroundColor: 'rgba(0, 210, 255, 0.1)',
@@ -393,6 +427,7 @@
     document.getElementById('mesSelect').onchange = updateUI;
     document.getElementById('contaSelect').onchange = updateUI;
 
+    // Inicia fluxo
     init();
 </script>
 </body>
