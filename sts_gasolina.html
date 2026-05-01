@@ -58,6 +58,38 @@
             box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.1);
         }
 
+        /* Estilos dos Chips */
+        .chip {
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border);
+            background: rgba(30, 41, 59, 0.4);
+            color: #94a3b8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chip:hover {
+            border-color: rgba(34, 211, 238, 0.3);
+            background: rgba(34, 211, 238, 0.05);
+            color: #fff;
+        }
+
+        .chip.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #020617;
+            box-shadow: 0 10px 20px -5px rgba(34, 211, 238, 0.3);
+            transform: translateY(-2px);
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -100,18 +132,30 @@
                 </div>
             </div>
 
-            <div class="flex flex-wrap gap-4 w-full lg:w-auto" id="filterControls" style="display: none;">
-                <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
+            <div class="flex flex-col md:flex-row gap-6 w-full lg:w-auto" id="filterControls" style="display: none;">
+                <!-- Seletor de Mês (Inalterado conforme solicitado) -->
+                <div class="flex flex-col gap-2 min-w-[200px]">
                     <label class="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Mês de Referência</label>
                     <select id="mesSelect" onchange="updateDashboard()" class="custom-select"></select>
                 </div>
-                <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
-                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Métrica do Painel</label>
-                    <select id="metricSelect" onchange="updateDashboard()" class="custom-select">
-                        <option value="consumo">Consumo Viaturas (L)</option>
-                        <option value="km">Quilometragem (KM)</option>
-                        <option value="total">Consumo Global (L)</option>
-                    </select>
+
+                <!-- Interface de Chips (Substituindo o antigo select de métrica) -->
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Visualização Ativa</label>
+                    <div class="flex flex-wrap gap-2" id="metricChips">
+                        <button onclick="setMetric('consumo')" class="chip active" data-metric="consumo">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path></svg>
+                            Consumo Viaturas
+                        </button>
+                        <button onclick="setMetric('km')" class="chip" data-metric="km">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"></path></svg>
+                            Quilometragem
+                        </button>
+                        <button onclick="setMetric('total')" class="chip" data-metric="total">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zM4 15a1 1 0 00-1 1v2a1 1 0 001 1h12a1 1 0 001-1v-2a1 1 0 00-1-1H4z"></path></svg>
+                            Consumo Global
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -127,27 +171,26 @@
             <!-- Top Metrics -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in" style="animation-delay: 0.1s">
                 <div class="glass-card p-6 rounded-[2rem]">
-                    <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-3">Estoque Anterior</p>
-                    <h2 id="estoqueAnterior" class="text-3xl font-extrabold stat-value">0 L</h2>
-                    <p class="text-slate-500 text-[10px] mt-2 uppercase font-bold tracking-tighter">Início do mês</p>
+                    <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3 text-center">Estoque Anterior</p>
+                    <h2 id="estoqueAnterior" class="text-3xl font-extrabold stat-value text-center">0 L</h2>
+                    <p class="text-slate-500 text-[10px] mt-2 uppercase font-bold tracking-tighter text-center">Início do mês</p>
                 </div>
 
                 <div class="glass-card p-6 rounded-[2rem] border-b-4 border-cyan-500/50">
-                    <p class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest mb-3">Entradas / Aquisição</p>
-                    <h2 id="aquisicao" class="text-3xl font-extrabold text-white">0 L</h2>
-                    <p class="text-slate-500 text-[10px] mt-2 uppercase font-bold tracking-tighter">Total recebido</p>
+                    <p class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest mb-3 text-center">Entradas / Aquisição</p>
+                    <h2 id="aquisicao" class="text-3xl font-extrabold text-white text-center">0 L</h2>
+                    <p class="text-slate-500 text-[10px] mt-2 uppercase font-bold tracking-tighter text-center">Total recebido</p>
                 </div>
 
                 <div class="glass-card p-6 rounded-[2rem] bg-gradient-to-br from-cyan-900/20 to-transparent">
-                    <p class="text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-3">Estoque Atual</p>
-                    <h2 id="estoqueAtual" class="text-3xl font-black text-white">0 L</h2>
-                    <p class="text-emerald-500/60 text-[10px] mt-2 font-bold uppercase tracking-tighter">Saldo em tanque</p>
+                    <p class="text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-3 text-center">Estoque Atual</p>
+                    <h2 id="estoqueAtual" class="text-3xl font-black text-white text-center">0 L</h2>
+                    <p class="text-emerald-500/60 text-[10px] mt-2 font-bold uppercase tracking-tighter text-center">Saldo em tanque</p>
                 </div>
 
-                <!-- Novo Card de Variação Interanual no topo -->
                 <div id="trendCard" class="glass-card p-6 rounded-[2rem] border-dashed border-slate-700">
-                    <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">Variação Interanual</p>
-                    <div id="trendContent" class="flex items-center gap-3">
+                    <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3 text-center">Variação Interanual</p>
+                    <div id="trendContent" class="flex items-center justify-center gap-3">
                         <!-- Conteúdo preenchido via JS -->
                     </div>
                 </div>
@@ -183,7 +226,6 @@
                             Detalhamento: <span id="mesNome" class="text-cyan-400">Janeiro</span>
                         </h3>
                         
-                        <!-- Conteúdo Dinâmico Conforme Métrica -->
                         <div id="detailContent" class="space-y-6">
                         </div>
 
@@ -213,6 +255,7 @@
         
         let dieselData = {};
         let myChart;
+        let currentMetric = 'consumo'; // Métrica padrão
 
         function parseCSV(str) {
             const arr = [];
@@ -281,9 +324,25 @@
             }
         }
 
+        // Função para alternar as métricas via chips
+        function setMetric(metric) {
+            currentMetric = metric;
+            
+            // Atualizar UI dos chips
+            document.querySelectorAll('.chip').forEach(chip => {
+                if (chip.getAttribute('onclick').includes(metric)) {
+                    chip.classList.add('active');
+                } else {
+                    chip.classList.remove('active');
+                }
+            });
+
+            updateDashboard();
+        }
+
         function updateDashboard() {
             const mes = document.getElementById('mesSelect').value;
-            const metric = document.getElementById('metricSelect').value;
+            const metric = currentMetric;
             const data = dieselData[mes];
 
             if (!data) return;
