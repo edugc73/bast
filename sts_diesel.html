@@ -37,43 +37,55 @@
             -webkit-text-fill-color: transparent;
         }
 
-        /* Estilização dos Chips */
-        .chip {
-            padding: 8px 16px;
+        .custom-select {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 14px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .custom-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.1);
+        }
+
+        /* Estilos para os Chips */
+        .metric-chip {
+            padding: 10px 18px;
             border-radius: 12px;
-            font-size: 11px;
+            font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: rgba(30, 41, 59, 0.5);
             border: 1px solid var(--border);
+            background: rgba(30, 41, 59, 0.4);
             color: #94a3b8;
+            cursor: pointer;
             white-space: nowrap;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        .chip:hover {
+        .metric-chip:hover {
             background: rgba(30, 41, 59, 0.8);
             border-color: rgba(255, 255, 255, 0.2);
             color: white;
         }
 
-        .chip.active {
-            background: var(--accent);
-            border-color: var(--accent);
+        .metric-chip.active {
+            background: #22d3ee;
+            border-color: #22d3ee;
             color: #020617;
-            box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
-            transform: scale(1.05);
-        }
-
-        .chip-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.4);
+            transform: translateY(-2px);
         }
 
         @keyframes fadeIn {
@@ -95,18 +107,6 @@
         @keyframes rotation {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-
-        /* Scrollbar suave para os chips em mobile */
-        .custom-scrollbar::-webkit-scrollbar {
-            height: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.05);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: var(--accent);
-            border-radius: 10px;
         }
     </style>
 </head>
@@ -130,20 +130,20 @@
                 </div>
             </div>
 
-            <!-- Filtros de Seleção Rápida (Chips) -->
-            <div class="w-full lg:max-w-2xl space-y-6" id="filterControls" style="display: none;">
-                <div>
-                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1 mb-3 block">Mês de Referência</label>
-                    <div id="mesChips" class="chip-container custom-scrollbar overflow-x-auto pb-2">
-                        <!-- Chips de meses inseridos via JS -->
-                    </div>
+            <div class="flex flex-col md:flex-row items-start md:items-end gap-6 w-full lg:w-auto" id="filterControls" style="display: none;">
+                <!-- Mês de Referência (Original Mantido) -->
+                <div class="flex flex-col gap-2 min-w-[180px]">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Mês de Referência</label>
+                    <select id="mesSelect" onchange="updateDashboard()" class="custom-select"></select>
                 </div>
-                <div>
-                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1 mb-3 block">Métrica do Painel</label>
-                    <div id="metricChips" class="chip-container">
-                        <div class="chip active" onclick="selectMetric('consumo', this)">Consumo Viaturas</div>
-                        <div class="chip" onclick="selectMetric('km', this)">Quilometragem</div>
-                        <div class="chip" onclick="selectMetric('total', this)">Consumo Global</div>
+
+                <!-- Chips de Métrica (Novo) -->
+                <div class="flex flex-col gap-2 w-full md:w-auto">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-widest ml-1">Métrica do Painel</label>
+                    <div class="flex flex-wrap gap-2" id="metricChipsContainer">
+                        <button onclick="changeMetric('consumo')" id="chip-consumo" class="metric-chip active">Consumo Viaturas</button>
+                        <button onclick="changeMetric('km')" id="chip-km" class="metric-chip">Quilometragem</button>
+                        <button onclick="changeMetric('total')" id="chip-total" class="metric-chip">Consumo Global</button>
                     </div>
                 </div>
             </div>
@@ -180,12 +180,14 @@
                 <div id="trendCard" class="glass-card p-6 rounded-[2rem] border-dashed border-slate-700">
                     <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">Variação Interanual</p>
                     <div id="trendContent" class="flex items-center gap-3">
+                        <!-- Conteúdo preenchido via JS -->
                     </div>
                 </div>
             </div>
 
             <!-- Charts & Details -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-in" style="animation-delay: 0.2s">
+                <!-- Main Chart -->
                 <div class="lg:col-span-2 glass-card p-8 rounded-[2rem]">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                         <div>
@@ -206,6 +208,7 @@
                     </div>
                 </div>
 
+                <!-- Detail Panel -->
                 <div class="flex flex-col gap-6">
                     <div class="glass-card p-8 rounded-[2rem]">
                         <h3 class="font-extrabold text-lg mb-8 text-white">
@@ -215,6 +218,7 @@
                         <div id="detailContent" class="space-y-6">
                         </div>
 
+                        <!-- Média Global -->
                         <div id="efficiencyBox" class="mt-10 p-6 bg-gradient-to-r from-cyan-500/10 to-transparent rounded-2xl border border-cyan-500/20 relative overflow-hidden">
                             <div class="relative z-10">
                                 <p class="text-[10px] text-cyan-300 font-bold uppercase mb-1 tracking-widest">Média Global da Frota</p>
@@ -240,8 +244,7 @@
         
         let dieselData = {};
         let myChart;
-        let selectedMes = '';
-        let selectedMetric = 'consumo';
+        let currentMetric = 'consumo'; // Variável de controle global da métrica
 
         function parseCSV(str) {
             const arr = [];
@@ -266,30 +269,14 @@
             return parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
         }
 
-        // Seleção de Métrica via Chips
-        function selectMetric(metric, element) {
-            selectedMetric = metric;
-            document.querySelectorAll('#metricChips .chip').forEach(c => c.classList.remove('active'));
-            element.classList.add('active');
-            updateDashboard();
-        }
-
-        // Seleção de Mês via Chips
-        function selectMes(mes, element) {
-            selectedMes = mes;
-            document.querySelectorAll('#mesChips .chip').forEach(c => c.classList.remove('active'));
-            element.classList.add('active');
-            updateDashboard();
-        }
-
         async function loadData() {
             try {
                 const response = await fetch(CSV_URL);
                 const text = await response.text();
                 const rows = parseCSV(text);
 
-                const containerMes = document.getElementById('mesChips');
-                containerMes.innerHTML = '';
+                const selectMes = document.getElementById('mesSelect');
+                selectMes.innerHTML = '';
 
                 rows.forEach((row, idx) => {
                     if (idx < 2) return;
@@ -308,24 +295,15 @@
                         atual: cleanVal(row[16])
                     };
 
-                    // Criar Chip de Mês
-                    const chip = document.createElement('div');
-                    chip.className = 'chip';
-                    chip.textContent = mesNome.charAt(0).toUpperCase() + mesNome.slice(1).toLowerCase();
-                    chip.onclick = () => selectMes(mesNome, chip);
-                    
-                    // Definir o primeiro mês como selecionado por padrão
-                    if (selectedMes === '') {
-                        selectedMes = mesNome;
-                        chip.classList.add('active');
-                    }
-                    
-                    containerMes.appendChild(chip);
+                    const option = document.createElement('option');
+                    option.value = mesNome;
+                    option.textContent = mesNome.charAt(0).toUpperCase() + mesNome.slice(1).toLowerCase();
+                    selectMes.appendChild(option);
                 });
 
                 document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'block';
-                document.getElementById('filterControls').style.display = 'block';
+                document.getElementById('filterControls').style.display = 'flex';
                 
                 updateDashboard();
 
@@ -335,15 +313,31 @@
             }
         }
 
+        // Função para alternar a métrica via Chips
+        function changeMetric(metric) {
+            currentMetric = metric;
+            
+            // Atualizar classes visuais dos chips
+            document.querySelectorAll('.metric-chip').forEach(chip => {
+                chip.classList.remove('active');
+            });
+            document.getElementById(`chip-${metric}`).classList.add('active');
+            
+            // Atualizar dashboard
+            updateDashboard();
+        }
+
         function updateDashboard() {
-            const data = dieselData[selectedMes];
+            const mes = document.getElementById('mesSelect').value;
+            const data = dieselData[mes];
+
             if (!data) return;
 
             // Stats Topo
             document.getElementById('estoqueAnterior').innerText = data.anterior.toLocaleString('pt-BR') + ' L';
             document.getElementById('aquisicao').innerText = data.aquisicao.toLocaleString('pt-BR') + ' L';
             document.getElementById('estoqueAtual').innerText = data.atual.toLocaleString('pt-BR') + ' L';
-            document.getElementById('mesNome').innerText = selectedMes;
+            document.getElementById('mesNome').innerText = mes;
 
             const detailContent = document.getElementById('detailContent');
             const efficiencyBox = document.getElementById('efficiencyBox');
@@ -353,7 +347,7 @@
 
             let val25, val26, unit;
 
-            if (selectedMetric === 'km') {
+            if (currentMetric === 'km') {
                 val25 = data.k25; val26 = data.k26; unit = 'KM';
                 efficiencyBox.classList.add('hidden');
                 
@@ -371,7 +365,7 @@
                         <span class="font-black text-white text-3xl">${(data.k26 - data.k25).toLocaleString('pt-BR')} KM</span>
                     </div>
                 `;
-            } else if (selectedMetric === 'total') {
+            } else if (currentMetric === 'total') {
                 val25 = data.total25; val26 = data.total26; unit = 'L';
                 efficiencyBox.classList.add('hidden');
 
@@ -436,7 +430,7 @@
                 </div>
             `;
 
-            renderChart(selectedMetric);
+            renderChart(currentMetric);
         }
 
         function renderChart(type) {
@@ -474,7 +468,7 @@
                         {
                             label: '2025',
                             data: d25,
-                            backgroundColor: 'rgba(100, 116, 139, 0.4)',
+                            backgroundColor: 'rgba(100, 116, 139, 0.6)',
                             borderColor: 'rgba(255, 255, 255, 0.1)',
                             borderWidth: 1,
                             borderRadius: 10,
@@ -518,8 +512,8 @@
                         }
                     },
                     animation: {
-                        duration: 1200,
-                        easing: 'easeOutQuart'
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
                     }
                 }
             });
