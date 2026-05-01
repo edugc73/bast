@@ -37,7 +37,6 @@
         h1 { font-size: 1.5rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
         .subtitle { color: var(--text-s); font-size: 0.9rem; }
 
-        /* Nova Interface de Chips */
         .filter-section {
             background: var(--card);
             padding: 25px;
@@ -76,6 +75,16 @@
             border-color: var(--chip-active);
             color: var(--bg);
             box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+
+        /* Estilo especial para o botão Limpar quando não houver seleção */
+        .chip.clear-btn {
+            border-style: dashed;
+            opacity: 0.8;
+        }
+        .chip.clear-btn.active {
+            border-style: solid;
+            opacity: 1;
         }
 
         .top-bar-grid {
@@ -243,7 +252,8 @@
         // Atualiza visual dos chips
         const chips = document.querySelectorAll('.chip');
         chips.forEach(c => {
-            if (c.textContent === nome || (nome === "" && c.textContent === "Todos")) {
+            // Se nome for vazio (Limpar), ativa o chip "Limpar"
+            if (c.textContent === nome || (nome === "" && c.textContent === "Limpar")) {
                 c.classList.add('active');
             } else {
                 c.classList.remove('active');
@@ -266,7 +276,7 @@
                 
                 // Gerar Chips
                 const container = document.getElementById('gestorChips');
-                let htmlChips = `<div class="chip active" onclick="setGestor('')">Todos</div>`;
+                let htmlChips = `<div class="chip clear-btn active" onclick="setGestor('')">Limpar</div>`;
                 htmlChips += gestores.map(g => `<div class="chip" onclick="setGestor('${g}')">${g}</div>`).join('');
                 container.innerHTML = htmlChips;
 
@@ -283,13 +293,6 @@
         const resumoDiv = document.getElementById('resumo');
         
         resultsDiv.innerHTML = "";
-
-        // Se não tem nada selecionado e nada buscado
-        if (!gestorSelecionado && !busca) {
-            resumoDiv.style.display = "none";
-            resultsDiv.innerHTML = `<div class="no-results">Selecione um gestor acima ou utilize a busca para visualizar os contratos.</div>`;
-            return;
-        }
 
         // Lógica de filtragem
         let filtrados = baseDados;
@@ -311,6 +314,13 @@
                 const valorMensal = parseFloat((item['VALOR MÉDIO MENSAL'] || '0').replace(/\./g, '').replace(',', '.')) || 1;
                 return saldoNum < (valorMensal * 3);
             });
+        }
+
+        // Se o gestor for "Limpar" e não houver busca, não mostramos resultados para manter a tela limpa
+        if (!gestorSelecionado && !busca) {
+            resumoDiv.style.display = "none";
+            resultsDiv.innerHTML = `<div class="no-results">Selecione um gestor acima ou utilize a busca para visualizar os contratos.</div>`;
+            return;
         }
 
         // Atualizar Resumo
