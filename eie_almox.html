@@ -15,7 +15,7 @@
             --pos: #00ff88;
             --neg: #ff4d4d;
             --neutral: #8892b0;
-            --chip-bg: #152545;
+            --chip-bg: rgba(21, 37, 69, 0.8);
         }
 
         body {
@@ -34,37 +34,61 @@
             margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        @media (min-width: 768px) {
+            header { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
 
         .logo-area { display: flex; flex-direction: column; }
         .logo { font-weight: 600; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
-        #nomeContaCompleto { font-size: 0.85rem; color: var(--neutral); margin-top: 5px; }
+        #nomeContaCompleto { 
+            font-size: 1rem; 
+            font-weight: 600;
+            color: #fff; 
+            margin-top: 5px; 
+            border-left: 3px solid var(--accent);
+            padding-left: 10px;
+        }
 
-        /* Estilização dos Chips */
+        .controls { display: flex; align-items: center; gap: 15px; }
+        
+        #mesSelect {
+            background: #152545; color: white; border: 1px solid var(--accent);
+            padding: 8px 15px; border-radius: 8px; cursor: pointer; outline: none;
+        }
+
+        /* Container de Chips */
         .chips-container {
-            display: flex; gap: 10px; flex-wrap: wrap;
-            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 8px;
+            margin-bottom: 25px;
+            padding: 5px;
         }
 
         .chip {
-            background: var(--chip-bg); color: var(--neutral);
+            background: var(--chip-bg);
+            color: var(--neutral);
             border: 1px solid rgba(255,255,255,0.1);
-            padding: 8px 18px; border-radius: 20px;
-            font-size: 0.8rem; cursor: pointer;
-            transition: all 0.3s ease; font-weight: 400;
+            padding: 10px 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
         }
 
-        .chip:hover { border-color: var(--accent); color: var(--text); }
+        .chip:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
 
         .chip.active {
-            background: var(--accent); color: var(--bg-body);
-            border-color: var(--accent); font-weight: 600;
-            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
-        }
-
-        .controls select {
-            background: #152545; color: white; border: 1px solid var(--accent);
-            padding: 10px 15px; border-radius: 8px; cursor: pointer;
+            background: var(--accent);
+            color: var(--bg-body);
+            border-color: var(--accent);
+            box-shadow: 0 4px 12px rgba(0, 210, 255, 0.3);
         }
 
         .grid-cards {
@@ -79,34 +103,33 @@
         }
 
         .card h3 { font-size: 0.7rem; color: var(--neutral); text-transform: uppercase; margin-bottom: 15px; letter-spacing: 1px; }
-        .card p { font-size: 1.3rem; font-weight: 600; margin: 0; }
+        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; }
         .card .label-media { font-size: 0.65rem; color: var(--accent); display: block; margin-top: 10px; opacity: 0.8; }
 
         .chart-container {
             background: var(--bg-card); padding: 25px; border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 20px;
         }
 
-        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; opacity: 0.7; }
+        #status { text-align: center; font-size: 0.7rem; color: var(--accent); padding-bottom: 20px; opacity: 0.7; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <div class="header-top">
-            <div class="logo-area">
-                <div class="logo">ALMOXARIFADO EIE_ALMOX</div>
-                <div id="nomeContaCompleto">A carregar contas...</div>
-            </div>
-            <div class="controls">
-                <select id="mesSelect"></select>
-            </div>
+        <div class="logo-area">
+            <div class="logo">EIE_ALMOX • GESTÃO DE ESTOQUE</div>
+            <div id="nomeContaCompleto">Carregando dados...</div>
         </div>
-        
-        <!-- Área de Chips Substituindo o Select de Contas -->
-        <div id="contasChips" class="chips-container"></div>
+        <div class="controls">
+            <label style="font-size: 0.8rem; color: var(--neutral)">Referência:</label>
+            <select id="mesSelect"></select>
+        </div>
     </header>
+
+    <div class="chips-container" id="chipsContainer"></div>
 
     <div class="grid-cards">
         <div class="card">
@@ -126,7 +149,7 @@
         <div class="card">
             <h3>Saldo Atual</h3>
             <p id="valSaldo" style="color: var(--pos)">R$ 0,00</p>
-            <span class="label-media">Em estoque</span>
+            <span class="label-media">Estoque Atualizado</span>
         </div>
     </div>
 
@@ -140,8 +163,9 @@
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=1945400508&single=true&output=csv'; 
     
-    let db = { meses: [], dados: {}, listaContas: [], contaAtivaId: null };
+    let db = { meses: [], dados: {}, listaContas: [] };
     let myChart = null;
+    let selectedContaId = null;
 
     function parseVal(v) {
         if (!v) return 0;
@@ -157,33 +181,33 @@
             const csvText = await response.text();
             const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
             
+            // Referências (Linha 1 da Planilha)
+            const refsContas = lines[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
+            // Nomes Completos (Linha 2 da Planilha)
             const nomesContas = lines[1].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
             
             db.listaContas = [];
+            // Itera pelas colunas (pula a primeira de meses e pega de 4 em 4)
             for (let j = 1; j < nomesContas.length; j += 4) {
                 if (nomesContas[j]) {
-                    // Extrai apenas "Conta XX" ou similar para o chip
-                    const match = nomesContas[j].match(/CONTA\s\d+/i);
-                    const nomeCurto = match ? match[0] : nomesContas[j].substring(0, 8);
-
                     db.listaContas.push({ 
                         id: `c_${j}`, 
-                        nomeCompleto: nomesContas[j], 
-                        nomeCurto: nomeCurto,
+                        nome: nomesContas[j], 
+                        ref: refsContas[j] || `CONTA ${(j+3)/4}`, // Fallback caso a primeira linha esteja vazia
                         colIdx: j 
                     });
                 }
             }
 
-            // Renderizar Chips
             renderChips();
 
             db.meses = [];
             db.dados = {};
 
+            // Processamento dos dados mensais (Linha 4 em diante)
             for (let i = 3; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(f => f.replace(/"/g, '').trim());
-                if(!c[0] || c[0] === "" || c[0].includes("MESES")) continue;
+                if(!c[0] || c[0] === "" || c[0].toUpperCase().includes("MESES")) continue;
                 
                 const mes = c[0].toUpperCase();
                 db.meses.push(mes);
@@ -202,32 +226,30 @@
             const selMes = document.getElementById('mesSelect');
             selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
             
-            // Selecionar primeira conta por padrão
-            if(db.listaContas.length > 0) selectConta(db.listaContas[0].id);
-
-            document.getElementById('status').innerText = "● Sincronizado";
+            if (db.listaContas.length > 0) {
+                selectConta(db.listaContas[0].id);
+            }
+            
+            document.getElementById('status').innerText = "● Sincronizado com a Planilha";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro ao carregar dados.";
+            console.error(e);
+            document.getElementById('status').innerText = "Erro ao ler a planilha.";
         }
     }
 
     function renderChips() {
-        const container = document.getElementById('contasChips');
-        container.innerHTML = db.listaContas.map(c => `
-            <div class="chip" id="chip_${c.id}" onclick="selectConta('${c.id}')">
-                ${c.nomeCurto}
-            </div>
-        `).join('');
+        const container = document.getElementById('chipsContainer');
+        container.innerHTML = db.listaContas.map(conta => {
+            return `<div class="chip" id="chip-${conta.id}" onclick="selectConta('${conta.id}')">${conta.ref}</div>`;
+        }).join('');
     }
 
     function selectConta(id) {
-        db.contaAtivaId = id;
-        
-        // Atualizar visual dos chips
-        document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
-        const activeChip = document.getElementById(`chip_${id}`);
-        if(activeChip) activeChip.classList.add('active');
-
+        if (selectedContaId) {
+            document.getElementById(`chip-${selectedContaId}`)?.classList.remove('active');
+        }
+        selectedContaId = id;
+        document.getElementById(`chip-${id}`)?.classList.add('active');
         updateUI();
     }
 
@@ -242,14 +264,16 @@
 
     function updateUI() {
         const mes = document.getElementById('mesSelect').value;
-        const contaId = db.contaAtivaId;
+        const contaId = selectedContaId;
         if (!mes || !contaId || !db.dados[mes] || !db.dados[mes][contaId]) return;
 
         const info = db.dados[mes][contaId];
         const contaObj = db.listaContas.find(c => c.id === contaId);
         const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         
-        document.getElementById('nomeContaCompleto').innerText = contaObj.nomeCompleto;
+        // Exibe o nome completo no cabeçalho para o gestor saber o que é a conta
+        document.getElementById('nomeContaCompleto').innerText = contaObj.nome;
+        
         document.getElementById('valAnterior').innerText = f(info.anterior);
         document.getElementById('valAquisicao').innerText = f(info.aquisicao);
         document.getElementById('valConsumo').innerText = f(info.consumo);
@@ -280,7 +304,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { 
-                    legend: { labels: { color: '#ffffff', font: { family: 'Poppins', size: 11 } } } 
+                    legend: { position: 'bottom', labels: { color: '#ffffff', font: { family: 'Poppins', size: 11 } } } 
                 },
                 scales: {
                     y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0', font: { size: 10 } } },
@@ -291,7 +315,7 @@
     }
 
     document.getElementById('mesSelect').onchange = updateUI;
-    loadData();
+    window.onload = loadData;
 </script>
 </body>
 </html>
