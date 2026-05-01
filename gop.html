@@ -83,7 +83,10 @@
             border: 1px solid rgba(255,255,255,0.05);
             text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.3s;
         }
+        
+        .card:hover { transform: translateY(-5px); }
 
         .card h3 { font-size: 0.75rem; color: #8892b0; text-transform: uppercase; margin-bottom: 10px; }
         .card p { font-size: 1.6rem; font-weight: 600; margin: 0; }
@@ -129,7 +132,10 @@
             border-radius: 5px;
             color: white;
             box-sizing: border-box;
+            outline: none;
         }
+        
+        .form-group input:focus { border-color: var(--accent); }
 
         .form-actions { display: flex; gap: 10px; margin-top: 20px; }
         .form-actions button { flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; }
@@ -176,7 +182,7 @@
                 <option value="39">Conta 39</option>
                 <option value="42">Conta 42</option>
             </select>
-            <button class="btn-main" onclick="openModal()">Novo Lançamento</button>
+            <button class="btn-main" id="btnNovo" onclick="openModal()">Novo Lançamento</button>
         </div>
     </header>
 
@@ -243,7 +249,7 @@
         </div>
         <div class="form-actions">
             <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-            <button class="btn-save" onclick="saveData()">Salvar Dados</button>
+            <button class="btn-save" onclick="saveData()">Confirmar Lançamento</button>
         </div>
     </div>
 </div>
@@ -253,7 +259,7 @@
     import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    // Setup inicial
+    // Configurações do Firebase injetadas pelo ambiente
     const firebaseConfig = JSON.parse(__firebase_config);
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -265,42 +271,40 @@
     let currentUser = null;
     let unsubscribeData = null;
 
-    // Função de inicialização com Auth priorizada (Regra 3)
+    // Inicialização do sistema com autenticação segura
     async function init() {
         try {
-            document.getElementById('status').innerText = "Autenticando...";
+            document.getElementById('status').innerText = "Verificando credenciais...";
             
-            // Prioriza token customizado se disponível
+            // Tenta login com token customizado ou anónimo
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await signInWithCustomToken(auth, __initial_auth_token);
             } else {
                 await signInAnonymously(auth);
             }
 
-            // Escuta estado da autenticação
             onAuthStateChanged(auth, (user) => {
                 currentUser = user;
                 if (user) {
-                    console.log("Autenticado como:", user.uid);
                     startDataListener();
                 } else {
                     if (unsubscribeData) unsubscribeData();
-                    document.getElementById('status').innerText = "Aguardando autenticação...";
+                    document.getElementById('status').innerText = "Acesso negado.";
                 }
             });
         } catch (e) {
-            console.error("Erro na inicialização:", e);
-            document.getElementById('status').innerText = "Erro de permissão ou conexão.";
+            console.error(e);
+            document.getElementById('status').innerText = "Erro ao conectar à rede.";
         }
     }
 
-    // Escuta mudanças no banco seguindo a Regra 1 (Caminho Estrito)
+    // Listener em tempo real para sincronização de dados
     function startDataListener() {
         if (!currentUser) return;
 
-        // Cleanup listener anterior se existir
         if (unsubscribeData) unsubscribeData();
 
+        // Caminho padrão de segurança: /artifacts/{appId}/public/data/{collection}
         const collectionPath = collection(db, 'artifacts', appId, 'public', 'data', 'financeiro');
         const q = query(collectionPath);
 
@@ -313,19 +317,16 @@
                 rawData[mes][conta] = data;
             });
             updateUI();
-            document.getElementById('status').innerText = "● Conectado e Sincronizado";
+            document.getElementById('status').innerText = "● Sistema Online e Sincronizado";
         }, (err) => {
-            console.error("Erro no Listener:", err);
-            document.getElementById('status').innerText = "Erro de permissão ao ler dados.";
+            console.error(err);
+            document.getElementById('status').innerText = "Erro de permissão na leitura.";
         });
     }
 
-    // Função de Salvar seguindo as regras de Auth guard (Regra 3)
+    // Função para salvar novos valores
     window.saveData = async function() {
-        if (!currentUser) {
-            alert("Aguardando conexão segura...");
-            return;
-        }
+        if (!currentUser) return;
         
         const mes = document.getElementById('formMes').value;
         const conta = document.getElementById('formConta').value;
@@ -333,50 +334,40 @@
         const aq = parseFloat(document.getElementById('formAq').value) || 0;
         const con = parseFloat(document.getElementById('formCon').value) || 0;
 
-        // Caminho conforme Regra 1
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'financeiro', `${mes}_${conta}`);
         
         try {
-            document.getElementById('status').innerText = "Salvando...";
+            document.getElementById('status').innerText = "Enviando dados...";
             await setDoc(docRef, {
                 ant, aq, con, 
                 atu: ant + aq - con,
-                updatedBy: currentUser.uid,
-                timestamp: Date.now()
+                lastUpdate: Date.now(),
+                user: currentUser.uid
             });
             closeModal();
         } catch (e) {
-            console.error("Erro ao salvar:", e);
-            document.getElementById('status').innerText = "Erro ao gravar no banco.";
+            console.error(e);
+            alert("Erro ao salvar lançamento. Verifique a conexão.");
         }
     }
 
     function updateUI() {
         const mes = document.getElementById('mesSelect').value;
         const conta = document.getElementById('contaSelect').value;
-        
         const f = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         
-        if (rawData[mes] && rawData[mes][conta]) {
-            const d = rawData[mes][conta];
-            document.getElementById('txtAnt').innerText = f(d.ant);
-            document.getElementById('txtAq').innerText = f(d.aq);
-            document.getElementById('txtCon').innerText = f(d.con);
-            document.getElementById('txtAtu').innerText = f(d.atu);
-        } else {
-            document.getElementById('txtAnt').innerText = f(0);
-            document.getElementById('txtAq').innerText = f(0);
-            document.getElementById('txtCon').innerText = f(0);
-            document.getElementById('txtAtu').innerText = f(0);
-        }
+        const d = (rawData[mes] && rawData[mes][conta]) ? rawData[mes][conta] : { ant: 0, aq: 0, con: 0, atu: 0 };
+        
+        document.getElementById('txtAnt').innerText = f(d.ant);
+        document.getElementById('txtAq').innerText = f(d.aq);
+        document.getElementById('txtCon').innerText = f(d.con);
+        document.getElementById('txtAtu').innerText = f(d.atu);
 
         updateChart(conta);
     }
 
     function updateChart(contaId) {
         const mesesOrdem = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
-        
-        // Filtra apenas meses que possuem dados para a conta selecionada
         const labels = mesesOrdem.filter(m => rawData[m] && rawData[m][contaId]);
         const values = labels.map(m => rawData[m][contaId].atu);
 
@@ -389,29 +380,21 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Saldo Atual',
+                    label: 'Saldo Mensal',
                     data: values,
                     borderColor: '#00d2ff',
                     backgroundColor: 'rgba(0, 210, 255, 0.1)',
                     fill: true,
                     tension: 0.3,
                     pointRadius: 6,
+                    pointHoverRadius: 8,
                     pointBackgroundColor: '#00ff88'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            }
-                        }
-                    }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
                     y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' } },
                     x: { grid: { display: false }, ticks: { color: '#8892b0' } }
@@ -420,14 +403,12 @@
         });
     }
 
-    // Modal Helpers
     window.openModal = () => document.getElementById('modalLancamento').style.display = 'flex';
     window.closeModal = () => document.getElementById('modalLancamento').style.display = 'none';
 
     document.getElementById('mesSelect').onchange = updateUI;
     document.getElementById('contaSelect').onchange = updateUI;
 
-    // Inicia fluxo
     init();
 </script>
 </body>
