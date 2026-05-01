@@ -22,45 +22,99 @@
             font-family: 'Poppins', sans-serif;
             margin: 0; padding: 20px;
             background: radial-gradient(circle at top right, #0a1f44, #050a1a);
+            min-height: 100vh;
         }
 
         .container { max-width: 1200px; margin: 0 auto; }
 
         header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 20px; background: var(--bg-card); border-radius: 15px;
+            display: flex; flex-direction: column; gap: 20px;
+            padding: 25px; background: var(--bg-card); border-radius: 15px;
             margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .logo-area { display: flex; flex-direction: column; }
-        .logo { font-weight: 600; font-size: 1.1rem; color: var(--accent); }
-        #nomeConta { font-size: 0.8rem; color: #8892b0; margin-top: 4px; }
+        @media (min-width: 768px) {
+            header { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
 
-        .controls select {
-            background: #152545; color: white; border: 1px solid var(--accent);
-            padding: 10px; border-radius: 8px; cursor: pointer; margin-left: 10px;
+        .logo-area { display: flex; flex-direction: column; }
+        .logo { font-weight: 600; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
+        #nomeConta { font-size: 0.85rem; color: #8892b0; margin-top: 4px; font-weight: 300; }
+
+        .controls { display: flex; align-items: center; gap: 15px; }
+        
+        .mes-wrapper label { font-size: 0.7rem; color: #8892b0; margin-right: 8px; text-transform: uppercase; }
+        
+        #mesSelect {
+            background: #152545; color: white; border: 1px solid rgba(0, 210, 255, 0.3);
+            padding: 8px 15px; border-radius: 8px; cursor: pointer; outline: none;
+            transition: border 0.3s;
+        }
+        #mesSelect:focus { border-color: var(--accent); }
+
+        /* Estilização dos Chips */
+        .chips-container {
+            display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px;
+            justify-content: center;
+        }
+
+        .chip {
+            background: rgba(21, 37, 69, 0.6);
+            color: #8892b0;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85rem;
+            font-weight: 400;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chip:hover {
+            background: rgba(0, 210, 255, 0.1);
+            border-color: rgba(0, 210, 255, 0.5);
+            color: var(--text);
+        }
+
+        .chip.active {
+            background: var(--accent);
+            color: #050a1a;
+            border-color: var(--accent);
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
         }
 
         .grid-cards {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 20px; margin-bottom: 25px;
         }
 
         .card {
-            background: var(--bg-card); padding: 20px; border-radius: 20px;
+            background: var(--bg-card); padding: 25px; border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.05); text-align: center;
+            transition: transform 0.3s;
         }
+        .card:hover { transform: translateY(-5px); }
 
-        .card h3 { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; margin-bottom: 10px; }
-        .card p { font-size: 1.2rem; font-weight: 600; margin: 0; }
+        .card h3 { font-size: 0.75rem; color: #8892b0; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px; }
+        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; }
 
         .content-area {
             background: var(--bg-card); padding: 25px; border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
         }
 
-        canvas { width: 100% !important; height: 380px !important; }
-        #status { text-align: center; font-size: 0.7rem; color: var(--accent); margin-top: 20px; }
+        canvas { width: 100% !important; height: 350px !important; }
+        
+        #status { 
+            text-align: center; font-size: 0.7rem; color: #8892b0; 
+            margin-top: 30px; letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
@@ -68,19 +122,24 @@
 <div class="container">
     <header>
         <div class="logo-area">
-            <div class="logo">INTENDÊNCIA - CRÉDITO DISPONÍVEL - SAO</div>
-            <div id="nomeConta">Selecione uma conta</div>
+            <div class="logo">CONTROLE DE CRÉDITO - SAO</div>
+            <div id="nomeConta">Carregando informações...</div>
         </div>
         <div class="controls">
-            <select id="mesSelect"></select>
-            <select id="contaSelect">
-                <option value="C1">VIDA VEGETATIVA</option>
-                <option value="C2">CONTRATOS CONTINUADOS</option>
-                <option value="C3">MANUT/CONS BENS IMOVEIS</option>
-                <option value="C4">PROFESP</option>
-            </select>
+            <div class="mes-wrapper">
+                <label>Referência:</label>
+                <select id="mesSelect"></select>
+            </div>
         </div>
     </header>
+
+    <!-- Seletor de Chips -->
+    <div class="chips-container" id="chipsContainer">
+        <div class="chip active" data-value="C1">Vida Vegetativa</div>
+        <div class="chip" data-value="C2">Contratos Continuados</div>
+        <div class="chip" data-value="C3">Manut/Cons Bens Imóveis</div>
+        <div class="chip" data-value="C4">PROFESP</div>
+    </div>
 
     <div class="grid-cards">
         <div class="card">
@@ -105,19 +164,21 @@
         <canvas id="mainChart"></canvas>
     </div>
 
-    <div id="status">Sincronizando...</div>
+    <div id="status">Sincronizando com a base de dados...</div>
 </div>
 
 <script>
-    // Substitua pela URL da sua planilha SAO publicada como CSV
+    // URL da planilha publicada como CSV
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=212040633&single=true&output=csv'; 
     
     let db = { meses: [], dados: {} };
     let myChart = null;
+    let currentConta = "C1";
 
     function parseVal(v) {
         if (!v) return 0;
         let text = v.toString().trim();
+        // Remove pontos de milhar e substitui vírgula por ponto
         let clean = text.replace(/\./g, '').replace(',', '.');
         let num = parseFloat(clean);
         return isNaN(num) ? 0 : num;
@@ -132,7 +193,7 @@
             db.meses = [];
             db.dados = {};
 
-            // Início na linha 4 do CSV (índice 3), onde começam os meses
+            // Mapeamento dinâmico baseado na estrutura do CSV (Início na linha 4)
             for (let i = 3; i < lines.length; i++) {
                 const c = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/"/g, ''));
                 if(!c[0] || c[0].trim() === "" || c[0].toUpperCase().includes("MESES")) continue;
@@ -140,11 +201,6 @@
                 const mes = c[0].trim().toUpperCase();
                 db.meses.push(mes);
                 
-                // Mapeamento das colunas SAO:
-                // C1 (Vida Vegetativa): Ant(1), Cred(2), Util(3), Atu(4)
-                // C2 (Contratos): Ant(5), Cred(6), Util(7), Atu(8)
-                // C3 (Manut): Ant(9), Cred(10), Util(11), Atu(12)
-                // C4 (Profesp): Ant(13), Cred(14), Util(15), Atu(16)
                 db.dados[mes] = {
                     "C1": { ant: parseVal(c[1]), cre: parseVal(c[2]), uti: parseVal(c[3]), atu: parseVal(c[4]) },
                     "C2": { ant: parseVal(c[5]), cre: parseVal(c[6]), uti: parseVal(c[7]), atu: parseVal(c[8]) },
@@ -156,65 +212,124 @@
             const selMes = document.getElementById('mesSelect');
             selMes.innerHTML = db.meses.map(m => `<option value="${m}">${m}</option>`).join('');
             
+            // Seleciona o último mês disponível por padrão
+            if(db.meses.length > 0) selMes.value = db.meses[db.meses.length - 1];
+
             updateUI();
-            document.getElementById('status').innerText = "● Sincronizado";
+            document.getElementById('status').innerText = "● Sistema Online e Sincronizado";
         } catch (e) {
-            document.getElementById('status').innerText = "Erro ao carregar dados.";
+            console.error(e);
+            document.getElementById('status').innerText = "Erro na conexão com os dados.";
         }
     }
 
     function updateUI() {
         const mes = document.getElementById('mesSelect').value;
-        const conta = document.getElementById('contaSelect').value;
-        const info = db.dados[mes][conta];
+        const info = db.dados[mes][currentConta];
         const f = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         
-        const nomes = { "C1": "Vida Vegetativa", "C2": "Contratos Continuados", "C3": "Manut/Cons Bens Imóveis", "C4": "Profesp" };
-        document.getElementById('nomeConta').innerText = nomes[conta];
+        const nomes = { 
+            "C1": "Vida Vegetativa", 
+            "C2": "Contratos Continuados", 
+            "C3": "Manutenção de Bens Imóveis", 
+            "C4": "PROFESP" 
+        };
+        
+        document.getElementById('nomeConta').innerText = nomes[currentConta];
         
         document.getElementById('txtAnt').innerText = f(info.ant);
         document.getElementById('txtCred').innerText = f(info.cre);
         document.getElementById('txtUtil').innerText = f(info.uti);
         document.getElementById('txtAtu').innerText = f(info.atu);
 
-        updateChart(conta);
+        updateChart();
     }
 
-    function updateChart(contaId) {
+    function updateChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        
         if (myChart) myChart.destroy();
-        myChart = new Chart(document.getElementById('mainChart').getContext('2d'), {
+        
+        myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: db.meses,
                 datasets: [
                     {
                         label: 'Crédito Recebido',
-                        data: db.meses.map(m => db.dados[m][contaId].cre),
-                        backgroundColor: '#00ff88',
-                        borderRadius: 5
+                        data: db.meses.map(m => db.dados[m][currentConta].cre),
+                        backgroundColor: '#00ff88cc',
+                        borderColor: '#00ff88',
+                        borderWidth: 1,
+                        borderRadius: 4
                     },
                     {
                         label: 'Valor Utilizado',
-                        data: db.meses.map(m => db.dados[m][contaId].uti),
-                        backgroundColor: '#ff4d4d',
-                        borderRadius: 5
+                        data: db.meses.map(m => db.dados[m][currentConta].uti),
+                        backgroundColor: '#ff4d4dcc',
+                        borderColor: '#ff4d4d',
+                        borderWidth: 1,
+                        borderRadius: 4
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#ffffff' } } },
+                plugins: { 
+                    legend: { 
+                        position: 'top',
+                        labels: { color: '#8892b0', font: { family: 'Poppins', size: 11 } } 
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                return label;
+                            }
+                        }
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' } },
-                    x: { ticks: { color: '#8892b0' } }
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        ticks: { color: '#8892b0', font: { size: 10 } } 
+                    },
+                    x: { 
+                        grid: { display: false },
+                        ticks: { color: '#8892b0', font: { size: 10 } } 
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
                 }
             }
         });
     }
 
+    // Lógica dos Chips
+    document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+            // Remove active de todos
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            // Adiciona no clicado
+            this.classList.add('active');
+            // Atualiza conta global e interface
+            currentConta = this.getAttribute('data-value');
+            updateUI();
+        });
+    });
+
     document.getElementById('mesSelect').onchange = updateUI;
-    document.getElementById('contaSelect').onchange = updateUI;
+    
+    // Início
     loadData();
 </script>
 </body>
