@@ -13,6 +13,8 @@
             --text: #ffffff;
             --meta: #8892b0;
             --bast: #00ff88;
+            --chip-bg: rgba(255, 255, 255, 0.05);
+            --chip-active: #00d2ff;
         }
 
         body {
@@ -26,18 +28,52 @@
         .container { max-width: 1400px; margin: 0 auto; }
 
         header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 25px; background: var(--bg-card); border-radius: 15px;
+            display: flex; flex-direction: column; gap: 20px;
+            padding: 20px 25px; background: var(--bg-card); border-radius: 15px;
             margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1);
         }
 
+        @media (min-width: 992px) {
+            header { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
+
         .logo-area { display: flex; align-items: center; gap: 15px; }
-        .img-logo { height: 50px; width: auto; }
+        .img-logo { height: 45px; width: auto; }
         
-        select {
-            background: #1a2a4a; color: white; border: 1px solid var(--accent);
-            padding: 10px 20px; border-radius: 8px; outline: none; cursor: pointer; font-family: 'Poppins';
-            font-size: 0.9rem;
+        /* Estilização dos Chips */
+        .chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-start;
+        }
+
+        .chip {
+            background: var(--chip-bg);
+            color: var(--meta);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .chip:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .chip.active {
+            background: var(--accent);
+            color: #050a1a;
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+            transform: translateY(-2px);
         }
 
         .summary-card {
@@ -71,16 +107,17 @@
 <div class="container" translate="no">
     <header>
         <div class="logo-area">
-            <img src="dom.gif" alt="Logo" class="img-logo">
+            <img src="dom.gif" alt="Logo" class="img-logo" onerror="this.style.display='none'">
             <span style="font-weight: 600; color: var(--accent);">GESTOR DE EMPENHOS - SAO</span>
         </div>
-        <select id="repSelect" onchange="updateUI()">
-            <option value="">Carregando dados...</option>
-        </select>
+        <div id="chipsContainer" class="chips-container">
+            <!-- Chips serão inseridos aqui -->
+            <span style="color: var(--meta); font-size: 0.8rem;">Carregando responsáveis...</span>
+        </div>
     </header>
 
     <div class="summary-card">
-        <h2 id="displayNome">Saldo Total Disponível</h2>
+        <h2 id="displayNome">Selecione uma conta</h2>
         <p id="totalGeral">R$ 0,00</p>
     </div>
 
@@ -107,7 +144,8 @@
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvr14C0ibyiYOSg9e8bri06iwrvBhSv0bnZNBRhD_2hDIklJbWmRE5KKZAts4uDhbbdFCVvS32SPvX/pub?gid=87175636&single=true&output=csv'; 
     
     let responsaveis = {};
-    let ordemOriginal = []; // Nova variável para guardar a ordem da planilha
+    let ordemOriginal = [];
+    let selecionadoAtual = "";
 
     function parseValue(v) {
         if (!v || v.trim() === "") return 0;
@@ -150,7 +188,7 @@
             const rows = robustCSVParse(csvText);
             
             responsaveis = {};
-            ordemOriginal = []; // Reseta a ordem ao carregar
+            ordemOriginal = [];
             let currentResp = "";
 
             const patentes = ["SGT", "SO", "CAP", "TEN", "MAJ", "TC", "CEL"];
@@ -164,7 +202,6 @@
                 const ehNovo = patentes.some(p => col0.startsWith(p + " "));
                 if (ehNovo) {
                     currentResp = col0;
-                    // Adiciona na lista de ordem apenas se o nome ainda não estiver lá
                     if (!ordemOriginal.includes(currentResp)) {
                         ordemOriginal.push(currentResp);
                     }
@@ -180,7 +217,6 @@
                 const status = c[6] ? c[6].trim() : "";
 
                 if (empresa === "" && empenho === "" && saldoStr === "") continue;
-                if (empresa === "" && saldoStr !== "" && empenho === "") continue;
 
                 if (!responsaveis[currentResp]) {
                     responsaveis[currentResp] = { linhas: [], total: 0 };
@@ -193,35 +229,49 @@
                 responsaveis[currentResp].total += saldoNum;
             }
 
-            const select = document.getElementById('repSelect');
-            
-            // Aqui usamos a ordemOriginal em vez de Object.keys().sort()
-            if (ordemOriginal.length > 0) {
-                const anterior = select.value;
-                select.innerHTML = ordemOriginal.map(n => `<option value="${n}">${n}</option>`).join('');
-                
-                // Tenta manter o oficial selecionado após a atualização
-                if (ordemOriginal.includes(anterior)) {
-                    select.value = anterior;
-                }
-                
-                updateUI();
-                document.getElementById('status').innerText = "● Sincronizado";
-            } else {
-                select.innerHTML = '<option>Nenhum dado encontrado</option>';
-            }
+            renderChips();
+            document.getElementById('status').innerText = "● Sincronizado";
         } catch (e) {
             console.error(e);
             document.getElementById('status').innerText = "Erro na conexão.";
         }
     }
 
+    function renderChips() {
+        const container = document.getElementById('chipsContainer');
+        if (ordemOriginal.length === 0) {
+            container.innerHTML = '<span style="color: #ff4444;">Nenhum dado encontrado</span>';
+            return;
+        }
+
+        // Se não houver nada selecionado ou o selecionado não existir mais, seleciona o primeiro
+        if (!selecionadoAtual || !ordemOriginal.includes(selecionadoAtual)) {
+            selecionadoAtual = ordemOriginal[0];
+        }
+
+        container.innerHTML = ordemOriginal.map(resp => {
+            const isActive = resp === selecionadoAtual ? 'active' : '';
+            return `<div class="chip ${isActive}" onclick="selectResponsavel('${resp}')">${resp}</div>`;
+        }).join('');
+
+        updateUI();
+    }
+
+    function selectResponsavel(nome) {
+        selecionadoAtual = nome;
+        // Atualiza a classe ativa visualmente rápido
+        document.querySelectorAll('.chip').forEach(c => {
+            c.classList.remove('active');
+            if (c.innerText === nome) c.classList.add('active');
+        });
+        updateUI();
+    }
+
     function updateUI() {
-        const sel = document.getElementById('repSelect').value;
-        const data = responsaveis[sel];
+        const data = responsaveis[selecionadoAtual];
         if (!data) return;
 
-        document.getElementById('displayNome').innerText = `Saldo Total - ${sel}`;
+        document.getElementById('displayNome').innerText = `Saldo Total - ${selecionadoAtual}`;
         document.getElementById('totalGeral').innerText = formatarMoeda(data.total);
 
         const tbody = document.getElementById('tableBody');
@@ -238,6 +288,7 @@
     }
 
     loadData();
+    // Sincronização automática a cada 2 minutos
     setInterval(loadData, 120000);
 </script>
 </body>
