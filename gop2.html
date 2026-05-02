@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRESTAÇÃO DE CONTAS GOP 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #050a1a;
+            --bg-card: rgba(13, 27, 53, 0.95);
+            --accent: #00d2ff;
+            --text: #ffffff;
+            --pos: #00ff88;
+            --neg: #ff4d4d;
+            --overlay: rgba(0, 0, 0, 0.8);
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 15px;
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #0a1f44, #050a1a);
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        header {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo { font-weight: 600; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
+
+        /* Estilização dos Chips */
+        .account-chips {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) transparent;
+        }
+
+        .account-chips::-webkit-scrollbar { height: 4px; }
+        .account-chips::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+
+        .chip {
+            background: #152545;
+            color: #8892b0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .chip:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .chip.active {
+            background: var(--accent);
+            color: #050a1a;
+            border-color: var(--accent);
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+        }
+
+        .controls { display: flex; gap: 10px; align-items: center; }
+
+        .controls select, .btn-main {
+            background: #152545;
+            color: white;
+            border: 1px solid var(--accent);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-main {
+            background: var(--accent);
+            color: #050a1a;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+        }
+
+        .btn-main:hover {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+        }
+
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.3s;
+        }
+        
+        .card:hover { transform: translateY(-5px); }
+
+        .card h3 { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; margin-bottom: 8px; }
+        .card p { font-size: 1.4rem; font-weight: 600; margin: 0; }
+
+        .chart-box {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 20px;
+            height: 350px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--overlay);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: #152545;
+            padding: 25px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--accent);
+        }
+
+        .modal-content h2 { margin-top: 0; color: var(--accent); font-size: 1.1rem; }
+
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.75rem; color: #8892b0; margin-bottom: 4px; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            background: #050a1a;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 5px;
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+        }
+        
+        .form-group input:focus { border-color: var(--accent); }
+
+        .form-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .form-actions button { flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; }
+        .btn-cancel { background: #333; color: white; }
+        .btn-save { background: var(--pos); color: #050a1a; }
+
+        #status { text-align: center; font-size: 0.65rem; color: var(--accent); margin-top: 15px; opacity: 0.7; letter-spacing: 0.5px; }
+        
+        @media (max-width: 600px) {
+            .top-bar { flex-direction: column; text-align: center; }
+            .controls { width: 100%; }
+            .controls select, .btn-main { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="top-bar">
+            <div class="logo">FINANÇAS GOP 2026</div>
+            <div class="controls">
+                <select id="mesSelect">
+                    <option value="JANEIRO">JANEIRO</option>
+                    <option value="FEVEREIRO">FEVEREIRO</option>
+                    <option value="MARÇO">MARÇO</option>
+                    <option value="ABRIL">ABRIL</option>
+                    <option value="MAIO">MAIO</option>
+                    <option value="JUNHO">JUNHO</option>
+                    <option value="JULHO">JULHO</option>
+                    <option value="AGOSTO">AGOSTO</option>
+                    <option value="SETEMBRO">SETEMBRO</option>
+                    <option value="OUTUBRO">OUTUBRO</option>
+                    <option value="NOVEMBRO">NOVEMBRO</option>
+                    <option value="DEZEMBRO">DEZEMBRO</option>
+                </select>
+                <button class="btn-main" id="btnNovo" onclick="openModal()">+ Lançamento</button>
+            </div>
+        </div>
+        
+        <!-- BARRA DE CHIPS PARA SELECÇÃO DE CONTAS -->
+        <div class="account-chips" id="accountChips">
+            <div class="chip active" data-value="11">Conta 11</div>
+            <div class="chip" data-value="23">Conta 23</div>
+            <div class="chip" data-value="24">Conta 24</div>
+            <div class="chip" data-value="25">Conta 25</div>
+            <div class="chip" data-value="27">Conta 27</div>
+            <div class="chip" data-value="28">Conta 28</div>
+            <div class="chip" data-value="36">Conta 36</div>
+            <div class="chip" data-value="39">Conta 39</div>
+            <div class="chip" data-value="42">Conta 42</div>
+        </div>
+    </header>
+
+    <div class="grid-cards">
+        <div class="card"><h3>Saldo Anterior</h3><p id="txtAnt">R$ 0,00</p></div>
+        <div class="card"><h3>Aquisição (+)</h3><p id="txtAq">R$ 0,00</p></div>
+        <div class="card"><h3>Consumo (-)</h3><p id="txtCon" style="color: var(--neg)">R$ 0,00</p></div>
+        <div class="card"><h3>Saldo Atual</h3><p id="txtAtu" style="color: var(--pos)">R$ 0,00</p></div>
+    </div>
+
+    <div class="chart-box">
+        <canvas id="mainChart"></canvas>
+    </div>
+
+    <div id="status">A ligar ao servidor...</div>
+</div>
+
+<!-- Modal de Lançamento -->
+<div id="modalLancamento" class="modal">
+    <div class="modal-content">
+        <h2>Novo Lançamento</h2>
+        <div class="form-group">
+            <label>Mês Referência</label>
+            <select id="formMes">
+                <option value="JANEIRO">JANEIRO</option>
+                <option value="FEVEREIRO">FEVEREIRO</option>
+                <option value="MARÇO">MARÇO</option>
+                <option value="ABRIL">ABRIL</option>
+                <option value="MAIO">MAIO</option>
+                <option value="JUNHO">JUNHO</option>
+                <option value="JULHO">JULHO</option>
+                <option value="AGOSTO">AGOSTO</option>
+                <option value="SETEMBRO">SETEMBRO</option>
+                <option value="OUTUBRO">OUTUBRO</option>
+                <option value="NOVEMBRO">NOVEMBRO</option>
+                <option value="DEZEMBRO">DEZEMBRO</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Conta</label>
+            <select id="formConta">
+                <option value="11">Conta 11</option>
+                <option value="23">Conta 23</option>
+                <option value="24">Conta 24</option>
+                <option value="25">Conta 25</option>
+                <option value="27">Conta 27</option>
+                <option value="28">Conta 28</option>
+                <option value="36">Conta 36</option>
+                <option value="39">Conta 39</option>
+                <option value="42">Conta 42</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Saldo Anterior (R$)</label>
+            <input type="number" id="formAnt" step="0.01" value="0">
+        </div>
+        <div class="form-group">
+            <label>Aquisição (R$)</label>
+            <input type="number" id="formAq" step="0.01" value="0">
+        </div>
+        <div class="form-group">
+            <label>Consumo (R$)</label>
+            <input type="number" id="formCon" step="0.01" value="0">
+        </div>
+        <div class="form-actions">
+            <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+            <button class="btn-save" onclick="saveData()">Guardar Dados</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'gop-2026';
+
+    let rawData = {};
+    let myChart = null;
+    let currentUser = null;
+    let unsubscribeData = null;
+    let currentAccount = "11";
+
+    // Inicialização
+    async function init() {
+        try {
+            document.getElementById('status').innerText = "A autenticar...";
+            
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    startDataListener();
+                } else {
+                    if (unsubscribeData) unsubscribeData();
+                    document.getElementById('status').innerText = "Sessão encerrada.";
+                }
+            });
+        } catch (e) {
+            console.error(e);
+            document.getElementById('status').innerText = "Erro de rede ou permissões.";
+        }
+    }
+
+    function startDataListener() {
+        if (!currentUser) return;
+        if (unsubscribeData) unsubscribeData();
+
+        const collectionPath = collection(db, 'artifacts', appId, 'public', 'data', 'financeiro');
+        const q = query(collectionPath);
+
+        unsubscribeData = onSnapshot(q, (snapshot) => {
+            rawData = {};
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const [mes, conta] = doc.id.split('_');
+                if(!rawData[mes]) rawData[mes] = {};
+                rawData[mes][conta] = data;
+            });
+            updateUI();
+            document.getElementById('status').innerText = "● Sistema Online e Sincronizado";
+        }, (err) => {
+            console.error(err);
+            document.getElementById('status').innerText = "Erro ao sincronizar dados.";
+        });
+    }
+
+    window.saveData = async function() {
+        if (!currentUser) return;
+        
+        const mes = document.getElementById('formMes').value;
+        const conta = document.getElementById('formConta').value;
+        const ant = parseFloat(document.getElementById('formAnt').value) || 0;
+        const aq = parseFloat(document.getElementById('formAq').value) || 0;
+        const con = parseFloat(document.getElementById('formCon').value) || 0;
+
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'financeiro', `${mes}_${conta}`);
+        
+        try {
+            document.getElementById('status').innerText = "A guardar lançamento...";
+            await setDoc(docRef, {
+                ant, aq, con, 
+                atu: ant + aq - con,
+                lastUpdate: Date.now(),
+                user: currentUser.uid
+            });
+            closeModal();
+        } catch (e) {
+            console.error(e);
+            document.getElementById('status').innerText = "Erro ao guardar dados.";
+        }
+    }
+
+    function updateUI() {
+        const mes = document.getElementById('mesSelect').value;
+        const f = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        const d = (rawData[mes] && rawData[mes][currentAccount]) 
+                  ? rawData[mes][currentAccount] 
+                  : { ant: 0, aq: 0, con: 0, atu: 0 };
+        
+        document.getElementById('txtAnt').innerText = f(d.ant);
+        document.getElementById('txtAq').innerText = f(d.aq);
+        document.getElementById('txtCon').innerText = f(d.con);
+        document.getElementById('txtAtu').innerText = f(d.atu);
+
+        updateChart();
+    }
+
+    function updateChart() {
+        const mesesOrdem = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+        
+        // Filtra meses que possuem dados para a conta selecionada
+        const labels = mesesOrdem.filter(m => rawData[m] && rawData[m][currentAccount]);
+        const values = labels.map(m => rawData[m][currentAccount].atu);
+
+        if (myChart) myChart.destroy();
+        if (labels.length === 0) return;
+
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: `Evolução Saldo - Conta ${currentAccount}`,
+                    data: values,
+                    borderColor: '#00d2ff',
+                    backgroundColor: 'rgba(0, 210, 255, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#00ff88',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Saldo: R$ ${context.parsed.y.toLocaleString('pt-BR')}`
+                        }
+                    }
+                },
+                scales: {
+                    y: { 
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        ticks: { color: '#8892b0', font: { size: 10 } } 
+                    },
+                    x: { 
+                        grid: { display: false }, 
+                        ticks: { color: '#8892b0', font: { size: 10 } } 
+                    }
+                }
+            }
+        });
+    }
+
+    // Gestão da interatividade dos Chips
+    document.querySelectorAll('.chip').forEach(chip => {
+        chip.onclick = function() {
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            currentAccount = this.getAttribute('data-value');
+            updateUI();
+        };
+    });
+
+    window.openModal = () => document.getElementById('modalLancamento').style.display = 'flex';
+    window.closeModal = () => document.getElementById('modalLancamento').style.display = 'none';
+
+    document.getElementById('mesSelect').onchange = updateUI;
+
+    init();
+</script>
+</body>
+</html>
